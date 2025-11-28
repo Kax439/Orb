@@ -2,7 +2,7 @@
 -- Complete administration system with 600+ commands
 
 -- CONFIGURATION
-local owners = {game.Players.LocalPlayer.Name}
+local owners = {}
 local admins = {}
 local tempAdmins = {}
 local mods = {}
