@@ -2,13 +2,13 @@
 -- Complete administration system with 600+ commands
 
 -- CONFIGURATION
-local owners = {timnatood7012}
-local admins = {}
+local owners = {"timnatood7012"}
+local admins = {"timnatood7012"}
 local tempAdmins = {}
 local mods = {}
 local prefix = "!"
 local vipAdminBadgeId = 0
-local groupId = 0
+local groupId = 1897513544
 local groupRank = 255
 
 -- TABLES
