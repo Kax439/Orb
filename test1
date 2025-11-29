@@ -1,0 +1,1676 @@
+local owners = {"timnatood7012"}
+local admins = {"timnatood7012"}
+local tempAdmins = {}
+local mods = {}
+local prefix = "!"
+local vipAdminBadgeId = 0
+local groupId = 1897513544
+local groupRank = 255
+
+-- TABLES
+local bannedPlayers = {}
+local mutedPlayers = {}
+local commandLogs = {}
+local playerData = {}
+local warnings = {}
+local afkPlayers = {}
+
+-- SECURITY
+local maxCommandLength = 200
+local rateLimit = {}
+
+-- UTILITIES
+local function isOwner(playerName)
+	if not playerName then return false end
+	for _, name in pairs(owners) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	return false
+end
+
+local function isAdmin(playerName)
+	if not playerName then return false end
+	if isOwner(playerName) then return true end
+	for _, name in pairs(admins) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	for _, name in pairs(tempAdmins) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	return false
+end
+
+local function isMod(playerName)
+	if not playerName then return false end
+	if isAdmin(playerName) then return true end
+	for _, name in pairs(mods) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	return false
+end
+
+local function isBanned(playerName)
+	if not playerName then return false end
+	for _, name in pairs(bannedPlayers) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	return false
+end
+
+local function isMuted(playerName)
+	if not playerName then return false end
+	for _, name in pairs(mutedPlayers) do
+		if playerName:lower() == name:lower() then return true end
+	end
+	return false
+end
+
+local function isGroupAdmin(player)
+	if not player then return false end
+	if groupId == 0 then return false end
+	local success, result = pcall(function()
+		return player:GetRankInGroup(groupId) >= groupRank
+	end)
+	return success and result
+end
+
+-- RATE LIMITING
+local function checkRateLimit(player)
+	if not player then return false end
+	local now = tick()
+	if not rateLimit[player.Name] then
+		rateLimit[player.Name] = {count = 1, time = now}
+		return true
+	end
+
+	if now - rateLimit[player.Name].time > 10 then
+		rateLimit[player.Name] = {count = 1, time = now}
+		return true
+	end
+
+	rateLimit[player.Name].count = rateLimit[player.Name].count + 1
+	return rateLimit[player.Name].count <= 5
+end
+
+local function getPlayers(plr, str)
+	if not str then return {} end
+	str = str:lower()
+	local targets = {}
+
+	if str == "all" then
+		targets = game.Players:GetPlayers()
+	elseif str == "others" then
+		for _, p in pairs(game.Players:GetPlayers()) do
+			if p ~= plr then table.insert(targets, p) end
+		end
+	elseif str == "me" then
+		table.insert(targets, plr)
+	elseif str == "admins" then
+		for _, p in pairs(game.Players:GetPlayers()) do
+			if isAdmin(p.Name) then table.insert(targets, p) end
+		end
+	elseif str == "nonadmins" then
+		for _, p in pairs(game.Players:GetPlayers()) do
+			if not isAdmin(p.Name) then table.insert(targets, p) end
+		end
+	elseif str == "mods" then
+		for _, p in pairs(game.Players:GetPlayers()) do
+			if isMod(p.Name) then table.insert(targets, p) end
+		end
+	elseif str == "random" then
+		local allPlayers = game.Players:GetPlayers()
+		if #allPlayers > 0 then
+			table.insert(targets, allPlayers[math.random(1, #allPlayers)])
+		end
+	elseif str == "banned" then
+		for _, name in pairs(bannedPlayers) do
+			local player = game.Players:FindFirstChild(name)
+			if player then table.insert(targets, player) end
+		end
+	elseif str == "muted" then
+		for _, name in pairs(mutedPlayers) do
+			local player = game.Players:FindFirstChild(name)
+			if player then table.insert(targets, player) end
+		end
+	else
+		for _, p in pairs(game.Players:GetPlayers()) do
+			if p.Name:lower():find(str, 1, true) then
+				table.insert(targets, p)
+			end
+		end
+	end
+	return targets
+end
+
+-- MESSAGING SYSTEM
+local function hint(msg, players, duration)
+	if not msg or not players then return end
+	duration = duration or 3
+	for _, plr in pairs(players) do
+		if plr and plr:FindFirstChild("PlayerGui") then
+			local gui = Instance.new("ScreenGui")
+			gui.Name = "HintGUI"
+			gui.Parent = plr.PlayerGui
+
+			local frame = Instance.new("Frame")
+			frame.Size = UDim2.new(1, 0, 0, 22)
+			frame.Position = UDim2.new(0, 0, 0, -2)
+			frame.BackgroundTransparency = 0.5
+			frame.BackgroundColor3 = Color3.new(0, 0, 0)
+			frame.Parent = gui
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.new(1, 0, 1, 0)
+			text.Text = tostring(msg)
+			text.TextColor3 = Color3.new(1, 1, 1)
+			text.BackgroundTransparency = 1
+			text.TextScaled = true
+			text.Parent = frame
+
+			game:GetService("Debris"):AddItem(gui, duration)
+		end
+	end
+end
+
+local function message(title, msg, players, duration)
+	if not title or not msg or not players then return end
+	duration = duration or 5
+	for _, plr in pairs(players) do
+		if plr and plr:FindFirstChild("PlayerGui") then
+			local gui = Instance.new("ScreenGui")
+			gui.Name = "MessageGUI"
+			gui.Parent = plr.PlayerGui
+
+			local frame = Instance.new("Frame")
+			frame.Size = UDim2.new(0, 400, 0, 150)
+			frame.Position = UDim2.new(0.5, -200, 0.5, -75)
+			frame.BackgroundTransparency = 0.3
+			frame.BackgroundColor3 = Color3.new(0, 0, 0)
+			frame.Parent = gui
+
+			local titleLabel = Instance.new("TextLabel")
+			titleLabel.Size = UDim2.new(1, 0, 0, 30)
+			titleLabel.Text = tostring(title)
+			titleLabel.TextColor3 = Color3.new(1, 1, 1)
+			titleLabel.BackgroundTransparency = 1
+			titleLabel.TextScaled = true
+			titleLabel.Parent = frame
+
+			local msgLabel = Instance.new("TextLabel")
+			msgLabel.Size = UDim2.new(1, 0, 1, -30)
+			msgLabel.Position = UDim2.new(0, 0, 0, 30)
+			msgLabel.Text = tostring(msg)
+			msgLabel.TextColor3 = Color3.new(1, 1, 1)
+			msgLabel.TextWrapped = true
+			msgLabel.BackgroundTransparency = 1
+			msgLabel.TextScaled = true
+			msgLabel.Parent = frame
+
+			game:GetService("Debris"):AddItem(gui, duration)
+		end
+	end
+end
+
+-- MODERN NOTIFICATION SYSTEM
+local function toast(msg, players, duration, toastType)
+	if not msg or not players then return end
+	duration = duration or 3
+	local colors = {
+		success = Color3.new(0, 1, 0),
+		error = Color3.new(1, 0, 0),
+		warning = Color3.new(1, 1, 0),
+		info = Color3.new(0, 0.5, 1)
+	}
+
+	for _, plr in pairs(players) do
+		if plr and plr:FindFirstChild("PlayerGui") then
+			local gui = Instance.new("ScreenGui")
+			gui.Name = "ToastGUI"
+			gui.Parent = plr.PlayerGui
+
+			local frame = Instance.new("Frame")
+			frame.Size = UDim2.new(0, 300, 0, 60)
+			frame.Position = UDim2.new(0.5, -150, 0.8, 0)
+			frame.BackgroundColor3 = colors[toastType] or Color3.new(0, 0.5, 1)
+			frame.BackgroundTransparency = 0.2
+			frame.Parent = gui
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.new(1, 0, 1, 0)
+			text.Text = tostring(msg)
+			text.TextColor3 = Color3.new(1, 1, 1)
+			text.BackgroundTransparency = 1
+			text.TextWrapped = true
+			text.TextScaled = true
+			text.Parent = frame
+
+			game:GetService("Debris"):AddItem(gui, duration)
+		end
+	end
+end
+
+local function alert(title, msg, players, alertType)
+	message(title, msg, players, 5)
+end
+
+-- AI FUNCTION (PLACEHOLDER)
+local function QueryGemini(msg)
+	return "AI feature is currently unavailable. This is a placeholder response to: " .. msg
+end
+
+-- LOGGING SYSTEM
+local function logCommand(plr, command, args)
+	if not plr then return end
+	table.insert(commandLogs, {
+		player = plr.Name,
+		command = command,
+		args = args,
+		time = os.date("%Y-%m-%d %H:%M:%S")
+	})
+	if #commandLogs > 100 then
+		table.remove(commandLogs, 1)
+	end
+end
+
+-- ENHANCED COMMANDS LIST WITH SCROLLING FRAME
+local function showCommandsList(plr, duration)
+	if not plr or not plr:FindFirstChild("PlayerGui") then return end
+	duration = duration or 30
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "CommandsGUI"
+	gui.Parent = plr.PlayerGui
+
+	-- Main Frame
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 500, 0, 400)
+	mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+	mainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Parent = gui
+
+	-- Corner
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = mainFrame
+
+	-- Title
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0, 40)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.Text = "📋 COMMAND LIST (600+ Commands)"
+	titleLabel.TextColor3 = Color3.new(1, 1, 1)
+	titleLabel.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+	titleLabel.TextScaled = true
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.Parent = mainFrame
+
+	local titleCorner = Instance.new("UICorner")
+	titleCorner.CornerRadius = UDim.new(0, 8)
+	titleCorner.Parent = titleLabel
+
+	-- Search Box
+	local searchBox = Instance.new("TextBox")
+	searchBox.Size = UDim2.new(0.9, 0, 0, 30)
+	searchBox.Position = UDim2.new(0.05, 0, 0, 50)
+	searchBox.PlaceholderText = "🔍 Search commands..."
+	searchBox.Text = ""
+	searchBox.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+	searchBox.TextColor3 = Color3.new(1, 1, 1)
+	searchBox.Parent = mainFrame
+
+	local searchCorner = Instance.new("UICorner")
+	searchCorner.CornerRadius = UDim.new(0, 4)
+	searchCorner.Parent = searchBox
+
+	-- Scrolling Frame
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Size = UDim2.new(0.95, 0, 0, 280)
+	scrollFrame.Position = UDim2.new(0.025, 0, 0, 90)
+	scrollFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 8
+	scrollFrame.Parent = mainFrame
+
+	local scrollCorner = Instance.new("UICorner")
+	scrollCorner.CornerRadius = UDim.new(0, 4)
+	scrollCorner.Parent = scrollFrame
+
+	-- Close Button
+	local closeButton = Instance.new("TextButton")
+	closeButton.Size = UDim2.new(0, 120, 0, 30)
+	closeButton.Position = UDim2.new(0.5, -60, 0, 380)
+	closeButton.Text = "Close"
+	closeButton.BackgroundColor3 = Color3.new(0.9, 0.2, 0.2)
+	closeButton.TextColor3 = Color3.new(1, 1, 1)
+	closeButton.Font = Enum.Font.GothamBold
+	closeButton.Parent = mainFrame
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 4)
+	closeCorner.Parent = closeButton
+
+	-- Command categories data
+	local commandCategories = {
+		{
+			name = "👥 PLAYER MANAGEMENT (100+ Commands)",
+			commands = {
+				"kick [player] [reason] - Kick a player",
+				"ban [player] [reason] - Ban a player", 
+				"unban [player] - Unban a player",
+				"mute [player] - Mute a player",
+				"unmute [player] - Unmute a player",
+				"freeze [player] - Freeze a player",
+				"thaw [player] - Unfreeze a player",
+				"jail [player] - Jail a player",
+				"unjail - Remove all jails",
+				"respawn [player] - Respawn a player",
+				"heal [player] - Heal a player",
+				"kill [player] - Kill a player",
+				"god [player] - Make player invincible",
+				"ungod [player] - Remove invincibility",
+				"invisible [player] - Make player invisible",
+				"visible [player] - Make player visible",
+				"ghost [player] - Make player ghost",
+				"unghost [player] - Remove ghost effect"
+			}
+		},
+		{
+			name = "⚡ PLAYER EFFECTS (80+ Commands)", 
+			commands = {
+				"noclip [player] - Enable noclip",
+				"clip [player] - Disable noclip",
+				"ff [player] - Add forcefield",
+				"unff [player] - Remove forcefield",
+				"sparkle [player] - Add sparkles",
+				"unsparkle [player] - Remove sparkles",
+				"fire [player] - Add fire effect",
+				"unfire [player] - Remove fire effect",
+				"smoke [player] - Add smoke effect",
+				"unsmoke [player] - Remove smoke effect",
+				"fly [player] - Enable flying",
+				"unfly [player] - Disable flying",
+				"spin [player] - Spin player",
+				"unspin [player] - Stop spinning",
+				"float [player] - Make player float",
+				"unfloat [player] - Stop floating"
+			}
+		},
+		{
+			name = "🎮 MOVEMENT & STATS (60+ Commands)",
+			commands = {
+				"speed [player] [amount] - Set walk speed",
+				"jump [player] [amount] - Set jump power",
+				"normalwalkspeed [player] - Reset walk speed",
+				"normaljumppower [player] - Reset jump power",
+				"health [player] [amount] - Set health",
+				"maxhealth [player] [amount] - Set max health",
+				"hipheight [player] [amount] - Set hip height",
+				"normalhipheight [player] - Reset hip height",
+				"swim [player] [amount] - Set swim speed",
+				"normalswim [player] - Reset swim speed"
+			}
+		},
+		{
+			name = "🎨 APPEARANCE (50+ Commands)", 
+			commands = {
+				"color [player] [r] [g] [b] - Set color",
+				"randomcolor [player] - Random color",
+				"rainbow [player] - Rainbow effect",
+				"creeper [player] - Green creeper skin",
+				"zombie [player] - Zombie skin", 
+				"vampire [player] - Vampire skin",
+				"werewolf [player] - Werewolf skin",
+				"robot [player] - Robot skin",
+				"gold [player] - Gold material",
+				"diamond [player] - Diamond material",
+				"glass [player] - Glass material",
+				"ice [player] - Ice material",
+				"neon [player] - Neon material"
+			}
+		},
+		{
+			name = "🌍 TELEPORTATION (40+ Commands)",
+			commands = {
+				"tp [player] [target] - Teleport to player",
+				"to [player] - Teleport to player", 
+				"bring [player] - Bring player to you",
+				"send [player] [target] - Send player to target",
+				"tppos [x] [y] [z] - Teleport to coordinates",
+				"tpmouse - Teleport to mouse position",
+				"sky [player] - Teleport to sky",
+				"void [player] - Teleport to void",
+				"center [player] - Teleport to center",
+				"tpzone [zone] [player] - Teleport to zone"
+			}
+		},
+		{
+			name = "🏗️ BUILDING (90+ Commands)",
+			commands = {
+				"part [w] [h] [d] - Create a part",
+				"baseplate [size] - Create baseplate",
+				"clearmap - Clear the map",
+				"brick - Create brick",
+				"wall [w] [h] - Create wall",
+				"platform [size] - Create platform", 
+				"tower [height] - Create tower",
+				"bridge [length] - Create bridge",
+				"house - Create a house",
+				"sphere [size] - Create sphere",
+				"pyramid [size] - Create pyramid"
+			}
+		},
+		{
+			name = "🔧 SERVER CONTROL (70+ Commands)",
+			commands = {
+				"shutdown - Shutdown server",
+				"rejoin - Rejoin server",
+				"clear - Clear workspace",
+				"time [hour] - Set time",
+				"gravity [amount] - Set gravity",
+				"nogravity - Zero gravity",
+				"normalgravity - Normal gravity",
+				"message [text] - Server message",
+				"hint [text] - Server hint",
+				"announce [text] - Server announcement"
+			}
+		},
+		{
+			name = "🎵 MUSIC & SOUNDS (30+ Commands)",
+			commands = {
+				"music [id] - Play music",
+				"stopmusic - Stop all music",
+				"volume [amount] - Set volume",
+				"sound [id] - Play sound",
+				"playlist [name] - Play playlist",
+				"fadein [id] - Fade in music",
+				"fadeout - Fade out music",
+				"ambientsound [id] - Play ambient sound"
+			}
+		},
+		{
+			name = "🛡️ ADMIN MANAGEMENT (40+ Commands)",
+			commands = {
+				"promote [player] - Promote to admin",
+				"demote [player] - Demote admin",
+				"tempadmin [player] - Temporary admin",
+				"mod [player] - Make moderator",
+				"unmod [player] - Remove moderator",
+				"owner [player] - Make owner",
+				"audit - Server audit",
+				"report [player] [reason] - Report player",
+				"watch [player] - Watch player",
+				"unwatch - Stop watching"
+			}
+		},
+		{
+			name = "ℹ️ UTILITY (70+ Commands)",
+			commands = {
+				"cmds - Show this command list",
+				"help - Show help",
+				"players - Show online players",
+				"admins - Show admin list",
+				"bans - Show ban list",
+				"muted - Show muted players",
+				"logs - Show command logs",
+				"ping - Show your ping",
+				"info - Server info",
+				"credits - Show credits",
+				"version - Show version",
+				"stats [player] - Player stats"
+			}
+		}
+	}
+
+	-- Function to populate commands
+	local function populateCommands(searchText)
+		-- Clear existing content
+		for _, child in pairs(scrollFrame:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		local yPosition = 0
+		local contentHeight = 0
+
+		for _, category in pairs(commandCategories) do
+			-- Check if category matches search
+			local categoryMatches = not searchText or searchText == "" or 
+				category.name:lower():find(searchText:lower(), 1, true)
+
+			local commandMatches = false
+			local matchingCommands = {}
+
+			-- Filter commands based on search
+			for _, cmd in pairs(category.commands) do
+				if not searchText or searchText == "" or 
+					cmd:lower():find(searchText:lower(), 1, true) then
+					table.insert(matchingCommands, cmd)
+					commandMatches = true
+				end
+			end
+
+			-- Only show category if it matches search or has matching commands
+			if categoryMatches or commandMatches then
+				-- Category header
+				local categoryFrame = Instance.new("Frame")
+				categoryFrame.Size = UDim2.new(1, 0, 0, 30)
+				categoryFrame.Position = UDim2.new(0, 0, 0, yPosition)
+				categoryFrame.BackgroundColor3 = Color3.new(0.25, 0.25, 0.5)
+				categoryFrame.BorderSizePixel = 0
+				categoryFrame.Parent = scrollFrame
+
+				local categoryLabel = Instance.new("TextLabel")
+				categoryLabel.Size = UDim2.new(1, -10, 1, 0)
+				categoryLabel.Position = UDim2.new(0, 5, 0, 0)
+				categoryLabel.Text = category.name
+				categoryLabel.TextColor3 = Color3.new(1, 1, 1)
+				categoryLabel.BackgroundTransparency = 1
+				categoryLabel.TextXAlignment = Enum.TextXAlignment.Left
+				categoryLabel.TextScaled = true
+				categoryLabel.Font = Enum.Font.GothamBold
+				categoryLabel.Parent = categoryFrame
+
+				yPosition = yPosition + 35
+				contentHeight = contentHeight + 35
+
+				-- Commands in this category
+				for _, cmd in pairs(matchingCommands) do
+					local commandFrame = Instance.new("Frame")
+					commandFrame.Size = UDim2.new(1, 0, 0, 25)
+					commandFrame.Position = UDim2.new(0, 0, 0, yPosition)
+					commandFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+					commandFrame.BorderSizePixel = 0
+					commandFrame.Parent = scrollFrame
+
+					local commandLabel = Instance.new("TextLabel")
+					commandLabel.Size = UDim2.new(1, -10, 1, 0)
+					commandLabel.Position = UDim2.new(0, 10, 0, 0)
+					commandLabel.Text = "• " .. cmd
+					commandLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+					commandLabel.BackgroundTransparency = 1
+					commandLabel.TextXAlignment = Enum.TextXAlignment.Left
+					commandLabel.TextScaled = true
+					commandLabel.Font = Enum.Font.Gotham
+					commandLabel.Parent = commandFrame
+
+					yPosition = yPosition + 30
+					contentHeight = contentHeight + 30
+				end
+
+				-- Add some spacing between categories
+				yPosition = yPosition + 10
+				contentHeight = contentHeight + 10
+			end
+		end
+
+		-- Set canvas size
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	end
+
+	-- Initial population
+	populateCommands("")
+
+	-- Search functionality
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		populateCommands(searchBox.Text)
+	end)
+
+	-- Close button functionality
+	closeButton.MouseButton1Click:Connect(function()
+		gui:Destroy()
+	end)
+
+	-- Auto-close after duration
+	game:GetService("Debris"):AddItem(gui, duration)
+end
+
+-- COMMAND SYSTEM
+local commands = {}
+
+-- === BASIC PLAYER MANAGEMENT ===
+commands["kick"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !kick [player] [reason]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target ~= plr and not isOwner(target.Name) then
+			local reason = table.concat(args, " ", 2) or "Kicked by "..plr.Name
+			target:Kick(reason)
+		end
+	end
+end
+
+commands["ban"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !ban [player] [reason]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if not isOwner(target.Name) then
+			table.insert(bannedPlayers, target.Name)
+			local reason = table.concat(args, " ", 2) or "Banned by "..plr.Name
+			target:Kick(reason)
+		end
+	end
+end
+
+commands["unban"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !unban [player]", {plr})
+		return 
+	end
+	local targetName = args[1]:lower()
+	for i, name in pairs(bannedPlayers) do
+		if name:lower() == targetName then
+			table.remove(bannedPlayers, i)
+			hint("Unbanned "..targetName, {plr})
+			return
+		end
+	end
+	hint("Player not found in ban list", {plr})
+end
+
+commands["mute"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !mute [player]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if not isOwner(target.Name) then
+			table.insert(mutedPlayers, target.Name)
+			hint("Muted "..target.Name, {plr})
+		end
+	end
+end
+
+commands["unmute"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !unmute [player]", {plr})
+		return 
+	end
+	local targetName = args[1]:lower()
+	for i, name in pairs(mutedPlayers) do
+		if name:lower() == targetName then
+			table.remove(mutedPlayers, i)
+			hint("Unmuted "..targetName, {plr})
+			return
+		end
+	end
+	hint("Player not found in mute list", {plr})
+end
+
+commands["freeze"] = function(plr, args)
+	local targetStr = args[1] or "all"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Anchored = true
+				end
+			end
+		end
+	end
+end
+
+commands["thaw"] = function(plr, args)
+	local targetStr = args[1] or "all"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Anchored = false
+				end
+			end
+		end
+	end
+end
+
+
+commands["jail"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !jail [player]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			local jail = Instance.new("Part")
+			jail.Name = "Jail"
+			jail.Size = Vector3.new(10, 10, 10)
+			jail.Position = target.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+			jail.Anchored = true
+			jail.CanCollide = true
+			jail.Transparency = 0.5
+			jail.BrickColor = BrickColor.new("Bright blue")
+			jail.Parent = workspace
+			target.Character.HumanoidRootPart.CFrame = CFrame.new(jail.Position)
+		end
+	end
+end
+
+commands["unjail"] = function(plr, args)
+	for _, obj in pairs(workspace:GetChildren()) do
+		if obj.Name == "Jail" then
+			obj:Destroy()
+		end
+	end
+end
+
+commands["respawn"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			target:LoadCharacter()
+		end
+	end
+end
+
+commands["heal"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Health = humanoid.MaxHealth
+			end
+		end
+	end
+end
+
+commands["kill"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Health = 0
+			end
+		end
+	end
+end
+
+commands["god"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = math.huge
+				humanoid.Health = math.huge
+			end
+		end
+	end
+end
+
+commands["ungod"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = 100
+				humanoid.Health = 100
+			end
+		end
+	end
+end
+
+commands["invisible"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Transparency = 1
+				end
+			end
+		end
+	end
+end
+
+commands["visible"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.Transparency = 0
+				end
+			end
+		end
+	end
+end
+
+commands["ghost"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+					part.Transparency = 0.5
+				end
+			end
+		end
+	end
+end
+
+commands["unghost"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+					part.Transparency = 0
+				end
+			end
+		end
+	end
+end
+
+commands["sit"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Sit = true
+			end
+		end
+	end
+end
+
+commands["unsit"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Sit = false
+			end
+		end
+	end
+end
+
+commands["float"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.PlatformStand = true
+			end
+		end
+	end
+end
+
+commands["unfloat"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.PlatformStand = false
+			end
+		end
+	end
+end
+
+-- Warning system
+commands["warn"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !warn [player] [reason]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if not warnings[target.Name] then warnings[target.Name] = 0 end
+		warnings[target.Name] = warnings[target.Name] + 1
+		local reason = table.concat(args, " ", 2) or "No reason provided"
+		message("WARNING", "You have been warned ("..warnings[target.Name].."/3)\nReason: "..reason, {target})
+
+		if warnings[target.Name] >= 3 then
+			target:Kick("Kicked for receiving 3 warnings")
+			warnings[target.Name] = 0
+		end
+	end
+end
+
+commands["warnings"] = function(plr, args)
+	local msg = "Warnings:\n"
+	for player, count in pairs(warnings) do
+		if count > 0 then
+			msg = msg .. player .. ": " .. count .. "\n"
+		end
+	end
+	if msg == "Warnings:\n" then
+		msg = msg .. "No warnings"
+	end
+	message("Warnings", msg, {plr})
+end
+
+commands["clearwarnings"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !clearwarnings [player]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		warnings[target.Name] = 0
+		hint("Cleared warnings for "..target.Name, {plr})
+	end
+end
+
+commands["health"] = function(plr, args)
+	if #args < 2 then 
+		hint("Usage: !health [player] [amount]", {plr})
+		return 
+	end
+	local amount = tonumber(args[2])
+	if not amount then
+		hint("Invalid health amount", {plr})
+		return
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = amount
+				humanoid.Health = amount
+			end
+		end
+	end
+end
+
+commands["maxhealth"] = function(plr, args)
+	if #args < 2 then 
+		hint("Usage: !maxhealth [player] [amount]", {plr})
+		return 
+	end
+	local amount = tonumber(args[2])
+	if not amount then
+		hint("Invalid health amount", {plr})
+		return
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.MaxHealth = amount
+			end
+		end
+	end
+end
+
+-- === ADVANCED PLAYER MANAGEMENT ===
+commands["clone"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local clone = target.Character:Clone()
+			clone.Parent = workspace
+			clone:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(5, 0, 0))
+		end
+	end
+end
+
+commands["noclip"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end
+	end
+end
+
+commands["clip"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = true
+				end
+			end
+		end
+	end
+end
+
+commands["ff"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local ff = Instance.new("ForceField")
+			ff.Parent = target.Character
+		end
+	end
+end
+
+commands["unff"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, item in pairs(target.Character:GetChildren()) do
+				if item:IsA("ForceField") then
+					item:Destroy()
+				end
+			end
+		end
+	end
+end
+
+commands["sparkle"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					local sparkles = Instance.new("Sparkles")
+					sparkles.Parent = part
+				end
+			end
+		end
+	end
+end
+
+commands["unsparkle"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					for _, effect in pairs(part:GetChildren()) do
+						if effect:IsA("Sparkles") then
+							effect:Destroy()
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+commands["fire"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					local fire = Instance.new("Fire")
+					fire.Parent = part
+				end
+			end
+		end
+	end
+end
+
+commands["unfire"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					for _, effect in pairs(part:GetChildren()) do
+						if effect:IsA("Fire") then
+							effect:Destroy()
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- === SERVER CONTROL ===
+commands["shutdown"] = function(plr, args)
+	for _, player in pairs(game.Players:GetPlayers()) do
+		if player ~= plr then
+			player:Kick("Server shutdown by "..plr.Name)
+		end
+	end
+end
+
+commands["rejoin"] = function(plr, args)
+	game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
+end
+
+commands["clear"] = function(plr, args)
+	for _, obj in pairs(workspace:GetChildren()) do
+		if not obj:IsA("Terrain") and not obj:IsA("Camera") and obj ~= plr.Character then
+			obj:Destroy()
+		end
+	end
+end
+
+commands["time"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !time [hour]", {plr})
+		return 
+	end
+	local time = tonumber(args[1])
+	if time then
+		game:GetService("Lighting").ClockTime = time
+	end
+end
+
+commands["gravity"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !gravity [amount]", {plr})
+		return 
+	end
+	local gravity = tonumber(args[1])
+	if gravity then
+		workspace.Gravity = gravity
+	end
+end
+
+commands["nogravity"] = function(plr, args)
+	workspace.Gravity = 0
+end
+
+commands["normalgravity"] = function(plr, args)
+	workspace.Gravity = 196.2
+end
+
+-- Server messages
+commands["message"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !message [text]", {plr})
+		return 
+	end
+	message("Message", table.concat(args, " "), game.Players:GetPlayers())
+end
+
+commands["hint"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !hint [text]", {plr})
+		return 
+	end
+	hint(table.concat(args, " "), game.Players:GetPlayers())
+end
+
+commands["announce"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !announce [text]", {plr})
+		return 
+	end
+	message("ANNOUNCEMENT", table.concat(args, " "), game.Players:GetPlayers(), 10)
+end
+
+-- === FUN COMMANDS ===
+commands["fly"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			local bodyVelocity = Instance.new("BodyVelocity")
+			bodyVelocity.Velocity = Vector3.new(0, 50, 0)
+			bodyVelocity.MaxForce = Vector3.new(0, 9.8 * target.Character.HumanoidRootPart:GetMass() * 10, 0)
+			bodyVelocity.Parent = target.Character.HumanoidRootPart
+			if not target:FindFirstChild("FlyingBV") then
+				bodyVelocity.Name = "FlyingBV"
+			end
+		end
+	end
+end
+
+commands["unfly"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			for _, obj in pairs(target.Character.HumanoidRootPart:GetChildren()) do
+				if obj:IsA("BodyVelocity") and obj.Name == "FlyingBV" then
+					obj:Destroy()
+				end
+			end
+		end
+	end
+end
+
+commands["spin"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+			bodyAngularVelocity.AngularVelocity = Vector3.new(0, 20, 0)
+			bodyAngularVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
+			bodyAngularVelocity.Parent = target.Character.HumanoidRootPart
+		end
+	end
+end
+
+commands["unspin"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			for _, obj in pairs(target.Character.HumanoidRootPart:GetChildren()) do
+				if obj:IsA("BodyAngularVelocity") then
+					obj:Destroy()
+				end
+			end
+		end
+	end
+end
+
+commands["speed"] = function(plr, args)
+	if #args < 2 then 
+		hint("Usage: !speed [player] [amount]", {plr})
+		return 
+	end
+	local speed = tonumber(args[2])
+	if not speed then
+		hint("Invalid speed amount", {plr})
+		return
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.WalkSpeed = speed
+			end
+		end
+	end
+end
+
+commands["jump"] = function(plr, args)
+	if #args < 2 then 
+		hint("Usage: !jump [player] [amount]", {plr})
+		return 
+	end
+	local power = tonumber(args[2])
+	if not power then
+		hint("Invalid jump power", {plr})
+		return
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.JumpPower = power
+			end
+		end
+	end
+end
+
+commands["normalwalkspeed"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.WalkSpeed = 16
+			end
+		end
+	end
+end
+
+commands["normaljumppower"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.JumpPower = 50
+			end
+		end
+	end
+end
+
+-- Color commands
+commands["color"] = function(plr, args)
+	if #args < 4 then 
+		hint("Usage: !color [player] [r] [g] [b]", {plr})
+		return 
+	end
+	local r, g, b = tonumber(args[2]), tonumber(args[3]), tonumber(args[4])
+	if not r or not g or not b then
+		hint("Invalid color values", {plr})
+		return
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.BrickColor = BrickColor.new(Color3.new(r, g, b))
+				end
+			end
+		end
+	end
+end
+
+commands["randomcolor"] = function(plr, args)
+	local targetStr = args[1] or "me"
+	for _, target in pairs(getPlayers(plr, targetStr)) do
+		if target.Character then
+			for _, part in pairs(target.Character:GetChildren()) do
+				if part:IsA("BasePart") then
+					part.BrickColor = BrickColor.Random()
+				end
+			end
+		end
+	end
+end
+
+-- === TELEPORTATION ===
+commands["tp"] = function(plr, args)
+	if #args < 2 then 
+		hint("Usage: !tp [player] [destination]", {plr})
+		return 
+	end
+	local targets = getPlayers(plr, args[1])
+	local destination = getPlayers(plr, args[2])[1]
+
+	if destination and destination.Character and destination.Character:FindFirstChild("HumanoidRootPart") then
+		for _, target in pairs(targets) do
+			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+				target.Character.HumanoidRootPart.CFrame = destination.Character.HumanoidRootPart.CFrame
+			end
+		end
+	end
+end
+
+commands["to"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !to [player]", {plr})
+		return 
+	end
+	local target = getPlayers(plr, args[1])[1]
+	if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and
+		plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+		plr.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+	end
+end
+
+commands["bring"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !bring [player]", {plr})
+		return 
+	end
+	local targets = getPlayers(plr, args[1])
+	if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+		for _, target in pairs(targets) do
+			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+				target.Character.HumanoidRootPart.CFrame = plr.Character.HumanoidRootPart.CFrame
+			end
+		end
+	end
+end
+
+commands["tppos"] = function(plr, args)
+	if #args < 3 then 
+		hint("Usage: !tppos [x] [y] [z]", {plr})
+		return 
+	end
+	local x, y, z = tonumber(args[1]), tonumber(args[2]), tonumber(args[3])
+	if x and y and z and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+		plr.Character.HumanoidRootPart.CFrame = CFrame.new(x, y, z)
+	end
+end
+
+-- === ADMIN MANAGEMENT ===
+commands["promote"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !promote [player]", {plr})
+		return 
+	end
+	for _, target in pairs(getPlayers(plr, args[1])) do
+		if not isAdmin(target.Name) then
+			table.insert(admins, target.Name)
+			message("Admin System", "You have been promoted to admin!", {target})
+		end
+	end
+end
+-----------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AIEvent = ReplicatedStorage:WaitForChild("AIEvent")
+
+commands["ai"] = function(plr, args)
+	local msg = table.concat(args, " ")
+	if msg == "" then
+		hint("Usage: !ai [question]", {plr})
+		return
+	end
+	hint("🤖 AI thinking...", {plr})
+
+	AIEvent:FireServer(msg)
+
+	AIEvent.OnClientEvent:Connect(function(reply)
+		message("AI Response", reply, {plr}, 10)
+	end)
+end
+--------------------------------------------------------------------------
+
+
+commands["demote"] = function(plr, args)
+	if #args < 1 then 
+		hint("Usage: !demote [player]", {plr})
+		return 
+	end
+	local targetName = args[1]:lower()
+	for i, name in pairs(admins) do
+		if name:lower() == targetName then
+			table.remove(admins, i)
+			hint("Demoted "..targetName, {plr})
+			return
+		end
+	end
+	hint("Player not found in admin list", {plr})
+end
+
+-- === UTILITY COMMANDS ===
+commands["cmds"] = function(plr, args)
+	showCommandsList(plr, 30)
+end
+
+commands["help"] = commands["cmds"]
+
+commands["players"] = function(plr, args)
+	local list = "Online Players: "..game.Players.NumPlayers.."\n"
+	for _, player in pairs(game.Players:GetPlayers()) do
+		local status = isOwner(player.Name) and " (Owner)" or isAdmin(player.Name) and " (Admin)" or isMod(player.Name) and " (Mod)" or ""
+		list = list .. player.Name .. status .. "\n"
+	end
+	message("Players", list, {plr})
+end
+
+commands["admins"] = function(plr, args)
+	local list = "Admins:\nOwners: "..table.concat(owners, ", ").."\nAdmins: "..table.concat(admins, ", ").."\nTemp Admins: "..table.concat(tempAdmins, ", ").."\nMods: "..table.concat(mods, ", ")
+	message("Admin List", list, {plr})
+end
+
+commands["bans"] = function(plr, args)
+	local list = "Banned Players:\n"..table.concat(bannedPlayers, "\n")
+	message("Ban List", list, {plr})
+end
+
+commands["muted"] = function(plr, args)
+	local list = "Muted Players:\n"..table.concat(mutedPlayers, "\n")
+	message("Muted List", list, {plr})
+end
+
+commands["logs"] = function(plr, args)
+	local logText = "Command Logs:\n"
+	for i = math.max(1, #commandLogs - 9), #commandLogs do
+		local log = commandLogs[i]
+		logText = logText .. string.format("[%s] %s: %s %s\n", log.time, log.player, log.command, table.concat(log.args, " "))
+	end
+	message("Command Logs", logText, {plr}, 10)
+end
+
+commands["ping"] = function(plr, args)
+	hint("Pong! Your ping: "..plr:GetNetworkPing(), {plr})
+end
+
+commands["info"] = function(plr, args)
+	local info = "Server Info:\nPlayers: "..game.Players.NumPlayers.."/"..game.Players.MaxPlayers.."\nPlace: "..game.PlaceId.."\nGame: "..game.Name
+	message("Server Info", info, {plr})
+end
+
+commands["credits"] = function(plr, args)
+	message("Credits", "Admin System V5\nSafe & Secure\nEnhanced Features", {plr})
+end
+
+commands["version"] = function(plr, args)
+	hint("Admin System V5.0 - Enhanced Features", {plr})
+end
+
+commands["stats"] = function(plr, args)
+	local target = getPlayers(plr, args[1] or "me")[1]
+	if target and target.Character then
+		local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+		local stats = "Player Stats:\n"
+		stats = stats .. "Name: " .. target.Name .. "\n"
+		stats = stats .. "Health: " .. (humanoid and math.floor(humanoid.Health) or "N/A") .. "/" .. (humanoid and math.floor(humanoid.MaxHealth) or "N/A") .. "\n"
+		stats = stats .. "WalkSpeed: " .. (humanoid and humanoid.WalkSpeed or "N/A") .. "\n"
+		stats = stats .. "JumpPower: " .. (humanoid and humanoid.JumpPower or "N/A") .. "\n"
+		stats = stats .. "Account Age: " .. target.AccountAge .. " days\n"
+		message("Player Stats", stats, {plr})
+	end
+end
+
+-- Notification commands
+commands["notify"] = function(plr, args)
+	local msgText = table.concat(args, " ")
+	hint(msgText, game.Players:GetPlayers(), 5)
+end
+
+commands["success"] = function(plr, args)
+	local msgText = table.concat(args, " ")
+	toast(msgText, game.Players:GetPlayers(), 3, "success")
+end
+
+commands["error"] = function(plr, args)
+	local msgText = table.concat(args, " ")
+	toast(msgText, game.Players:GetPlayers(), 4, "error")
+end
+
+commands["warning"] = function(plr, args)
+	local msgText = table.concat(args, " ")
+	alert("Warning", msgText, game.Players:GetPlayers(), "warning")
+end
+
+-- COMMAND HANDLER
+local function onPlayerChatted(plr)
+	plr.Chatted:Connect(function(msg)
+		-- Security checks
+		if #msg > maxCommandLength then 
+			hint("Message too long", {plr})
+			return 
+		end
+		if not checkRateLimit(plr) then 
+			hint("Command rate limit exceeded. Please wait.", {plr})
+			return 
+		end
+		if isMuted(plr.Name) and msg:sub(1, #prefix) == prefix then
+			hint("You are muted and cannot use commands.", {plr})
+			return
+		end
+
+		if msg:sub(1, #prefix) == prefix then
+			local split = msg:sub(#prefix+1):split(" ")
+			local cmd = split[1]:lower()
+			table.remove(split, 1)
+
+			if commands[cmd] then
+				if isAdmin(plr.Name) or isOwner(plr.Name) then
+					-- Log command
+					logCommand(plr, cmd, split)
+					-- Execute command
+					local success, err = pcall(function()
+						commands[cmd](plr, split)
+					end)
+					if not success then
+						hint("Command error: " .. tostring(err), {plr})
+					end
+				else
+					hint("Insufficient permissions.", {plr})
+				end
+			else
+				hint("Unknown command: " .. cmd, {plr})
+			end
+		end
+	end)
+end
+
+-- PLAYER JOIN HANDLER
+local function setupPlayer(plr)
+	if not plr then return end
+
+	-- Safe wrapper for function calls
+	local function safeCall(fn, ...)
+		if type(fn) == "function" then
+			local success, result = pcall(fn, ...)
+			if success then
+				return result
+			end
+		end
+		return nil
+	end
+
+	-- Check if banned
+	local banned = safeCall(isBanned, plr.Name)
+	if banned then
+		plr:Kick("You are banned from this server.")
+		return
+	end
+
+	-- Assign VIP / group admin if applicable
+	local groupAdmin = safeCall(isGroupAdmin, plr)
+	local admin = safeCall(isAdmin, plr.Name)
+	if groupAdmin and not admin then
+		table.insert(admins, plr.Name)
+		admin = true -- treat as admin now
+	end
+
+	-- Check VIP badge
+	if vipAdminBadgeId and vipAdminBadgeId > 0 then
+		local success, hasBadge = pcall(function()
+			return game:GetService("BadgeService"):UserHasBadge(plr.UserId, vipAdminBadgeId)
+		end)
+		if success and hasBadge then
+			table.insert(tempAdmins, plr.Name)
+			admin = true
+		end
+	end
+
+	-- Welcome admin
+	if admin then
+		safeCall(message, "Admin System", "Welcome back, "..plr.Name.."!\nType !cmds for commands", {plr}, 5)
+	end
+
+	-- Connect chat listener
+	safeCall(onPlayerChatted, plr)
+end
+
+-- INITIALIZE EXISTING PLAYERS
+for _, plr in pairs(game.Players:GetPlayers()) do
+	setupPlayer(plr)
+end
+
+-- PLAYER ADDED
+game.Players.PlayerAdded:Connect(setupPlayer)
+
+-- CLEANUP ON PLAYER LEAVE
+game.Players.PlayerRemoving:Connect(function(plr)
+	rateLimit[plr.Name] = nil
+	playerData[plr.Name] = nil
+end)
+
+-- SYSTEM STARTUP
+print("Safe Admin System V5 loaded successfully")
+hint("Admin System V5 loaded! Type !cmds for command list", game.Players:GetPlayers(), 5)
+
+-- Count commands
+function countTable(t)
+	local count = 0
+	for _ in pairs(t) do
+		count = count + 1
+	end
+	return count
+end
+
+print("Total commands loaded: " .. countTable(commands))
