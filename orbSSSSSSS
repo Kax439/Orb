@@ -1,0 +1,660 @@
+local Admin = {"timnatood7012"}
+local Speed = 0.05
+local Distance = 5
+local Prefix = "!"
+local Players = game:GetService("Players")
+local Banned = {}
+
+local folder = Instance.new("Folder")
+folder.Name = "sbans"
+folder.Parent = game:GetService("Lighting")
+
+local function isAdmin(player)
+	for _, name in ipairs(Admin) do
+		if player.Name == name then
+			return true
+		end
+	end
+	return false
+end
+
+local function setupAdmin(player)
+	if not isAdmin(player) then return end
+
+	player.Chatted:Connect(function(msg)
+		msg = msg:lower()
+
+		if msg == Prefix .. "muslist" then
+			local sg2 = Instance.new("ScreenGui")
+			sg2.Parent = player:WaitForChild("PlayerGui")
+
+			local fm2 = Instance.new("Frame", sg2)
+			fm2.Position = UDim2.new(0.42,0,0.3,0)
+			fm2.Size = UDim2.new(0,300,0,400)
+			fm2.BackgroundColor3 = Color3.new(0,0,0)
+			fm2.BackgroundTransparency = 0.5
+			fm2.BorderSizePixel = 0
+
+			local songs = {"Cake","Watcha","Moonman","Hello","Lean","Waves","Baby"}
+
+			for i, text in ipairs(songs) do
+				local btn = Instance.new("TextButton", fm2)
+				btn.Size = UDim2.new(0,300,0,25)
+				btn.Position = UDim2.new(0,0,0,(i-1)*25)
+				btn.TextColor3 = Color3.new(1,1,1)
+				btn.Font = Enum.Font.SourceSans
+				btn.TextSize = 14
+				btn.Text = text
+				btn.BackgroundTransparency = 1
+			end
+
+			local close2 = Instance.new("TextButton", fm2)
+			close2.Size = UDim2.new(0,15,0,15)
+			close2.Position = UDim2.new(0,285,0,0)
+			close2.BackgroundTransparency = 1
+			close2.TextColor3 = Color3.new(1,1,1)
+			close2.Text = "X"
+			close2.Font = Enum.Font.SourceSans
+			close2.TextSize = 12
+			close2.MouseButton1Click:Connect(function()
+				sg2:Destroy()
+			end)
+		end
+	end)
+end
+
+Players.PlayerAdded:Connect(function(player)
+	game:GetService("Chat"):Chat(game.Workspace, player.Name .. " has joined! AccountAge = " .. player.AccountAge .. " | UserID = " .. player.UserId .. " |..!", Enum.ChatColor.Red)
+	setupAdmin(player)
+end)
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	setupAdmin(plr)
+end
+
+Players.PlayerRemoving:Connect(function(player2)
+	game:GetService("Chat"):Chat(game.Workspace, player2.Name .. " has left! AccountAge = " .. player2.AccountAge .. " | UserID = " .. player2.UserId .. " |..!", Enum.ChatColor.Red)
+end)
+
+local function handleAdminCommands(player, msg)
+	if not isAdmin(player) then return end
+
+	msg = msg:lower()
+
+	if msg == Prefix .. "cmds" then
+		local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+		screenGui.Name = "CommandListGUI"
+
+		local mainFrame = Instance.new("Frame", screenGui)
+		mainFrame.Size = UDim2.new(0, 520, 0, 450)
+		mainFrame.Position = UDim2.new(0.5, -260, 0.5, -225)
+		mainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+		mainFrame.BorderSizePixel = 0
+
+		local titleBar = Instance.new("Frame", mainFrame)
+		titleBar.Size = UDim2.new(1, 0, 0, 30)
+		titleBar.Position = UDim2.new(0, 0, 0, 0)
+		titleBar.BackgroundColor3 = Color3.new(0.2, 0, 0)
+
+		local titleText = Instance.new("TextLabel", titleBar)
+		titleText.Size = UDim2.new(1, -40, 1, 0)
+		titleText.Position = UDim2.new(0, 10, 0, 0)
+		titleText.Text = "ADMIN COMMANDS"
+		titleText.TextColor3 = Color3.new(1, 1, 1)
+		titleText.Font = Enum.Font.SourceSansBold
+		titleText.TextSize = 18
+		titleText.TextXAlignment = Enum.TextXAlignment.Left
+		titleText.BackgroundTransparency = 1
+
+		local closeBtn = Instance.new("TextButton", titleBar)
+		closeBtn.Size = UDim2.new(0, 30, 0, 30)
+		closeBtn.Position = UDim2.new(1, -30, 0, 0)
+		closeBtn.Text = "X"
+		closeBtn.TextColor3 = Color3.new(1, 1, 1)
+		closeBtn.Font = Enum.Font.SourceSansBold
+		closeBtn.TextSize = 18
+		closeBtn.BackgroundColor3 = Color3.new(0.3, 0, 0)
+		closeBtn.BorderSizePixel = 0
+		closeBtn.MouseButton1Click:Connect(function()
+			screenGui:Destroy()
+		end)
+
+		local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+		scrollFrame.Size = UDim2.new(1, -10, 1, -40)
+		scrollFrame.Position = UDim2.new(0, 5, 0, 35)
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 700)
+		scrollFrame.BackgroundTransparency = 1
+		scrollFrame.ScrollBarThickness = 8
+
+		local commands = {
+			Prefix .. "kill <plr> - Kills the target player",
+			Prefix .. "kick <plr> - Kicks the target player",
+			Prefix .. "ban <plr> - Bans the target player",
+			Prefix .. "explode <plr> - Makes player explode",
+			Prefix .. "exe <script> - Executes Lua code",
+			Prefix .. "console show - Opens admin console",
+			Prefix .. "console hide - Closes admin console",
+			Prefix .. "ff <plr> - Gives ForceField",
+			Prefix .. "unff <plr> - Removes ForceField",
+			Prefix .. "respawn <plr> - Respawns player",
+			Prefix .. "lag <plr> - Lags the target player",
+			Prefix .. "removetools <plr> - Removes all tools",
+			Prefix .. "god <plr> - Makes player invincible",
+			Prefix .. "ungod <plr> - Removes invincibility",
+			Prefix .. "muslist - Shows music list",
+			Prefix .. "music <id/song> - Plays music",
+			Prefix .. "pri - Gives admin privileges",
+			Prefix .. "sit <plr> - Makes player sit",
+			Prefix .. "jump <plr> - Makes player jump",
+			Prefix .. "bruh <plr> - Plays 'bruh' sound",
+			Prefix .. "ws <speed> - Sets walk speed",
+			Prefix .. "gear <id> - Gives gear by ID",
+			Prefix .. "tp <plr> - Teleports to player",
+			Prefix .. "btools <plr> - Gives building tools",
+			Prefix .. "pitch <n> - Sets sound pitch",
+			Prefix .. "volume <n> - Sets sound volume"
+		}
+
+		for i, cmd in ipairs(commands) do
+			local cmdLabel = Instance.new("TextLabel", scrollFrame)
+			cmdLabel.Size = UDim2.new(1, -10, 0, 25)
+			cmdLabel.Position = UDim2.new(0, 5, 0, (i-1)*25)
+			cmdLabel.Text = cmd
+			cmdLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+			cmdLabel.Font = Enum.Font.SourceSans
+			cmdLabel.TextSize = 16
+			cmdLabel.TextXAlignment = Enum.TextXAlignment.Left
+			cmdLabel.BackgroundTransparency = 1
+
+			if i < #commands then
+				local separator = Instance.new("Frame", scrollFrame)
+				separator.Size = UDim2.new(1, -20, 0, 1)
+				separator.Position = UDim2.new(0, 10, 0, i*25)
+				separator.BackgroundColor3 = Color3.new(0.3, 0, 0)
+				separator.BorderSizePixel = 0
+			end
+		end
+
+		scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #commands * 25)
+	end
+
+	if msg == Prefix .. "console show" then
+		local sg = Instance.new('ScreenGui', player.PlayerGui)
+		local fm = Instance.new('Frame', sg)
+		fm.Selectable = true
+		fm.Size = UDim2.new(0,400,0,300)
+		fm.BackgroundColor3 = Color3.new(0,0,0)
+		fm.BorderSizePixel = 4
+		fm.BorderColor3 = Color3.new(1,1,1)
+		fm.Position = UDim2.new(0.395,0,0.3,0)
+
+		local txt = Instance.new('TextLabel', fm)
+		txt.Size = UDim2.new(0,400,0,25)
+		txt.Text = "~Game Console~"
+		txt.Font = Enum.Font.SourceSans
+		txt.TextSize = 18
+		txt.TextColor3 = Color3.new(1,1,1)
+		txt.BackgroundColor3 = Color3.new(0,0,0)
+		txt.BorderSizePixel = 4
+		txt.BorderColor3 = Color3.new(1,1,1)
+
+		local box = Instance.new('TextBox', fm)
+		box.Position = UDim2.new(0,50,0,50)
+		box.Size = UDim2.new(0,300,0,200)
+		box.BackgroundColor3 = Color3.new(0,0,0)
+		box.BorderSizePixel = 4
+		box.BorderColor3 = Color3.new(1,1,1)
+		box.TextColor3 = Color3.new(1,1,1)
+		box.ClearTextOnFocus = false
+		box.MultiLine = true
+		box.TextXAlignment = Enum.TextXAlignment.Left
+		box.TextWrapped = true
+		box.TextYAlignment = Enum.TextYAlignment.Top
+		box.Text = 'Click clear to clear the text or remove me by holding backspace!'
+		box.Font = Enum.Font.SourceSans
+		box.TextSize = 14
+
+		local load1 = Instance.new('TextButton', box)
+		load1.Size = UDim2.new(0,200,0,25)
+		load1.Position = UDim2.new(0,50,0,170)
+		load1.BackgroundColor3 = Color3.new(0, 0.67, 0)
+		load1.TextColor3 = Color3.new(0,0,0)
+		load1.BorderSizePixel = 4
+		load1.BorderColor3 = Color3.new(1,1,1)
+		load1.Text = "Execute!"
+		load1.Font = Enum.Font.SourceSans
+		load1.TextSize = 14
+		load1.MouseButton1Click:Connect(function()
+			pcall(function()
+				loadstring(box.Text)()
+			end)
+		end)
+
+		local clr = Instance.new('TextButton', box)
+		clr.Size = UDim2.new(0,50,0,25)
+		clr.Position = UDim2.new(0,250,0,170)
+		clr.BackgroundColor3 = Color3.new(0.67,0,0)
+		clr.TextColor3 = Color3.new(0,0,0)
+		clr.BorderSizePixel = 4
+		clr.BorderColor3 = Color3.new(1,1,1)
+		clr.Text = "Clear!"
+		clr.Font = Enum.Font.SourceSans
+		clr.TextSize = 14
+		clr.MouseButton1Click:Connect(function()
+			box.Text = ''
+			box:CaptureFocus()
+		end)
+
+		player:SetAttribute("AdminConsole", fm)
+	end
+
+
+	if msg == Prefix .. "console hide" then
+		local console = player:GetAttribute("AdminConsole")
+		if console then
+			console:Destroy()
+			player:SetAttribute("AdminConsole", nil)
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "kill")) == Prefix .. "kill" then
+		local targetName = msg:sub(#(Prefix .. "kill") + 2):lower()
+
+		if targetName == "me" then
+			if player.Character and player.Character:FindFirstChild("Humanoid") then
+				player.Character.Humanoid.Health = 0
+			end
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v.Character and v.Character:FindFirstChild("Humanoid") then
+					v.Character.Humanoid.Health = 0
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					if target.Character and target.Character:FindFirstChild("Humanoid") then
+						target.Character.Humanoid.Health = 0
+					end
+				end
+			end
+		end
+	end
+
+
+	if msg:sub(1, #(Prefix .. "kick")) == Prefix .. "kick" then
+		local targetName = msg:sub(#(Prefix .. "kick") + 2):lower()
+
+		if targetName == "me" then
+			player:Kick("Kicked by admin command")
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v ~= player then
+					v:Kick("Kicked by admin command")
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					target:Kick("Kicked by admin command")
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "ban")) == Prefix .. "ban" then
+		local targetName = msg:sub(#(Prefix .. "ban") + 2):lower()
+
+		if targetName == "me" then
+			table.insert(Banned, player.Name)
+			local banValue = Instance.new("StringValue", folder)
+			banValue.Name = player.Name
+			banValue.Value = player.Name
+			player:Kick("Banned by admin command")
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v ~= player then
+					table.insert(Banned, v.Name)
+					local banValue = Instance.new("StringValue", folder)
+					banValue.Name = v.Name
+					banValue.Value = v.Name
+					v:Kick("Banned by admin command")
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					table.insert(Banned, target.Name)
+					local banValue = Instance.new("StringValue", folder)
+					banValue.Name = target.Name
+					banValue.Value = target.Name
+					target:Kick("Banned by admin command")
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "explode")) == Prefix .. "explode" then
+		local targetName = msg:sub(#(Prefix .. "explode") + 2):lower()
+
+		if targetName == "me" then
+			if player.Character then
+				local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso")
+				if torso then
+					local ex = Instance.new("Explosion", game.Workspace)
+					ex.Position = torso.Position
+				end
+			end
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v.Character then
+					local torso = v.Character:FindFirstChild("Torso") or v.Character:FindFirstChild("UpperTorso")
+					if torso then
+						local ex = Instance.new("Explosion", game.Workspace)
+						ex.Position = torso.Position
+					end
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					if target.Character then
+						local torso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+						if torso then
+							local ex = Instance.new("Explosion", game.Workspace)
+							ex.Position = torso.Position
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "exe")) == Prefix .. "exe" then
+		local scriptCode = msg:sub(#(Prefix .. "exe") + 2)
+		pcall(function()
+			loadstring(scriptCode)()
+		end)
+	end
+
+	if msg:sub(1, #(Prefix .. "ff")) == Prefix .. "ff" then
+		local targetName = msg:sub(#(Prefix .. "ff") + 2):lower()
+
+		if targetName == "me" then
+			if player.Character then
+				Instance.new("ForceField", player.Character)
+			end
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v.Character then
+					Instance.new("ForceField", v.Character)
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					if target.Character then
+						Instance.new("ForceField", target.Character)
+					end
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "unff")) == Prefix .. "unff" then
+		local targetName = msg:sub(#(Prefix .. "unff") + 2):lower()
+
+		if targetName == "me" then
+			if player.Character then
+				for _, child in pairs(player.Character:GetChildren()) do
+					if child:IsA("ForceField") then
+						child:Destroy()
+					end
+				end
+			end
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				if v.Character then
+					for _, child in pairs(v.Character:GetChildren()) do
+						if child:IsA("ForceField") then
+							child:Destroy()
+						end
+					end
+				end
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					if target.Character then
+						for _, child in pairs(target.Character:GetChildren()) do
+							if child:IsA("ForceField") then
+								child:Destroy()
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "ws")) == Prefix .. "ws" then
+		local speed = tonumber(msg:sub(#(Prefix .. "ws") + 2))
+		if speed and player.Character and player.Character:FindFirstChild("Humanoid") then
+			player.Character.Humanoid.WalkSpeed = speed
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "gear")) == Prefix .. "gear" then
+		local gearId = tonumber(msg:sub(#(Prefix .. "gear") + 2))
+		if gearId then
+			pcall(function()
+				local asset = game:GetService("InsertService"):LoadAsset(gearId)
+				if asset and asset:FindFirstChildOfClass("Tool") then
+					asset:FindFirstChildOfClass("Tool").Parent = player.Backpack
+				end
+			end)
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "tp")) == Prefix .. "tp" then
+		local targetName = msg:sub(#(Prefix .. "tp") + 2):lower()
+
+		for _, target in pairs(Players:GetPlayers()) do
+			if target.Name:lower():sub(1, #targetName) == targetName then
+				if player.Character and target.Character then
+					local playerTorso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso")
+					local targetTorso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+
+					if playerTorso and targetTorso then
+						playerTorso.CFrame = targetTorso.CFrame
+					end
+				end
+			end
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "music")) == Prefix .. "music" then
+		local songParam = msg:sub(#(Prefix .. "music") + 2):lower()
+
+		local oldSound = workspace.Terrain:FindFirstChild("BadLukeeSoundsz")
+		if oldSound then
+			oldSound:Destroy()
+		end
+
+		local sound = Instance.new('Sound', workspace.Terrain)
+		sound.Volume = 10
+		sound.Name = 'BadLukeeSoundsz'
+		sound.Pitch = 1
+		sound.Looped = true
+
+		local soundId = "rbxassetid://" .. songParam
+
+		if songParam == "watcha" then
+			soundId = "rbxassetid://177681012"
+		elseif songParam == "lean" then
+			soundId = "rbxassetid://328474897"
+		elseif songParam == "baby" then
+			soundId = "rbxassetid://130841252"
+		elseif songParam == "moonman" then
+			soundId = "rbxassetid://340924386"
+		elseif songParam == "hello" then
+			soundId = "rbxassetid://313694441"
+		elseif songParam == "waves" then
+			soundId = "rbxassetid://253545802"
+		elseif songParam == "cake" then
+			soundId = "rbxassetid://313144336"
+		end
+
+		sound.SoundId = soundId
+		sound:Play()
+
+		player:SetAttribute("CurrentMusic", sound)
+	end
+
+	if msg:sub(1, #(Prefix .. "pitch")) == Prefix .. "pitch" then
+		local pitch = tonumber(msg:sub(#(Prefix .. "pitch") + 2))
+		local sound = player:GetAttribute("CurrentMusic")
+		if pitch and sound then
+			sound.Pitch = pitch
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "volume")) == Prefix .. "volume" then
+		local volume = tonumber(msg:sub(#(Prefix .. "volume") + 2))
+		local sound = player:GetAttribute("CurrentMusic")
+		if volume and sound then
+			sound.Volume = volume
+		end
+	end
+
+	if msg:sub(1, #(Prefix .. "btools")) == Prefix .. "btools" then
+		local targetName = msg:sub(#(Prefix .. "btools") + 2):lower()
+
+		local function giveBTools(targetPlayer)
+			if targetPlayer and targetPlayer:FindFirstChild("Backpack") then
+				local tools = {
+					{Name = "Move", BinType = Enum.BinType.GameTool},
+					{Name = "Clone", BinType = Enum.BinType.Clone},
+					{Name = "Delete", BinType = Enum.BinType.Hammer}
+				}
+
+				for _, toolInfo in pairs(tools) do
+					local tool = Instance.new("HopperBin", targetPlayer.Backpack)
+					tool.Name = toolInfo.Name
+					tool.BinType = toolInfo.BinType
+				end
+			end
+		end
+
+		if targetName == "me" then
+			giveBTools(player)
+		elseif targetName == "all" then
+			for _, v in pairs(Players:GetPlayers()) do
+				giveBTools(v)
+			end
+		else
+			for _, target in pairs(Players:GetPlayers()) do
+				if target.Name:lower():sub(1, #targetName) == targetName then
+					giveBTools(target)
+				end
+			end
+		end
+	end
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+	if isAdmin(player) then
+		player.Chatted:Connect(function(msg)
+			handleAdminCommands(player, msg)
+		end)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	if isAdmin(player) then
+		player.Chatted:Connect(function(msg)
+			handleAdminCommands(player, msg)
+		end)
+	end
+end)
+
+local function setupOrbit(player)
+	if not isAdmin(player) then return end
+
+	local orbModel = Instance.new('Model', workspace)
+	orbModel.Name = player.Name .. "_Orbit"
+
+	local humanoid = Instance.new('Humanoid', orbModel)
+	humanoid.MaxHealth = 0
+
+	local orbPart = Instance.new("Part", orbModel)
+	orbPart.BrickColor = BrickColor.new("Really black")
+	orbPart.Size = Vector3.new(1,1,1)
+	orbPart.Shape = Enum.PartType.Ball
+	orbPart.Material = Enum.Material.Neon
+	orbPart.Anchored = true
+	orbPart.Name = "BsOrb"
+	orbPart.Locked = true
+	orbPart.CanCollide = false
+
+	if player.Character then
+		game:GetService('Chat'):Chat(orbPart, "Welcome to i0rb " .. player.Name .. "! i0rb remade by scrubl0rd. The current prefix is " .. Prefix .. "! Say " .. Prefix .. "cmds to show a list of commands!", Enum.ChatColor.Red)
+	end
+
+	local connection
+	connection = game:GetService('RunService').Stepped:Connect(function()
+		if not player or not player.Character or not orbPart or orbPart.Parent == nil then
+			connection:Disconnect()
+			return
+		end
+
+		local character = player.Character
+		local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+
+		if torso then
+			local time = tick()
+			orbPart.CFrame = torso.CFrame * CFrame.Angles(math.sin(time), math.abs(time), math.sin(time)) * CFrame.new(0, 0, -Distance)
+
+			local trailPart = Instance.new("Part", orbPart)
+			trailPart.CFrame = orbPart.CFrame
+			trailPart.Size = Vector3.new(0.3, 0.3, 0.3)
+			trailPart.BrickColor = BrickColor.new("Really black")
+			trailPart.Transparency = 0.3
+			trailPart.CanCollide = false
+			trailPart.Anchored = true
+			trailPart.Material = Enum.Material.Neon
+			game:GetService("Debris"):AddItem(trailPart, 1)
+		end
+	end)
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+	if isAdmin(player) then
+		setupOrbit(player)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	if isAdmin(player) then
+		wait(1)
+		setupOrbit(player)
+	end
+end)
+
+game:GetService('RunService').Stepped:Connect(function()
+	for _, player in pairs(Players:GetPlayers()) do
+		for _, bannedName in ipairs(Banned) do
+			if player.Name == bannedName then
+				player:Kick("You are banned")
+			end
+		end
+	end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	for _, bannedName in ipairs(Banned) do
+		if player.Name == bannedName then
+			player:Kick("You are banned")
+		end
+	end
+end)
