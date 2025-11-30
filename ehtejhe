@@ -1,0 +1,1689 @@
+-- Admin System by Scrubl0rd
+-- Complete Fixed Version
+
+local Admin = {"timnatood7012"}
+local Speed = 0.05
+local Distance = 5
+local Prefix = "!"
+local Players = game:GetService("Players")
+local Banned = {}
+local RunningLoops = {}
+
+local folder = Instance.new("Folder")
+folder.Name = "sbans"
+folder.Parent = game:GetService("Lighting")
+
+local function isAdmin(player)
+    for _, name in ipairs(Admin) do
+        if player.Name == name then
+            return true
+        end
+    end
+    return false
+end
+
+local function getPlayerByName(name)
+    if not name or name == "" then return nil end
+    name = name:lower()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Name:lower():sub(1, #name) == name then
+            return player
+        end
+    end
+    return nil
+end
+
+local function setupAdmin(player)
+    if not isAdmin(player) then return end
+
+    player.Chatted:Connect(function(msg)
+        msg = msg:lower()
+
+        if msg == Prefix .. "muslist" then
+            local sg2 = Instance.new("ScreenGui")
+            sg2.Parent = player:WaitForChild("PlayerGui")
+
+            local fm2 = Instance.new("Frame", sg2)
+            fm2.Position = UDim2.new(0.42,0,0.3,0)
+            fm2.Size = UDim2.new(0,300,0,400)
+            fm2.BackgroundColor3 = Color3.new(0,0,0)
+            fm2.BackgroundTransparency = 0.5
+            fm2.BorderSizePixel = 0
+
+            local songs = {"Cake","Watcha","Moonman","Hello","Lean","Waves","Baby"}
+
+            for i, text in ipairs(songs) do
+                local btn = Instance.new("TextButton", fm2)
+                btn.Size = UDim2.new(0,300,0,25)
+                btn.Position = UDim2.new(0,0,0,(i-1)*25)
+                btn.TextColor3 = Color3.new(1,1,1)
+                btn.Font = Enum.Font.SourceSans
+                btn.TextSize = 14
+                btn.Text = text
+                btn.BackgroundTransparency = 1
+                btn.MouseButton1Click:Connect(function()
+                    handleAdminCommands(player, Prefix .. "music " .. text:lower())
+                end)
+            end
+
+            local close2 = Instance.new("TextButton", fm2)
+            close2.Size = UDim2.new(0,15,0,15)
+            close2.Position = UDim2.new(0,285,0,0)
+            close2.BackgroundTransparency = 1
+            close2.TextColor3 = Color3.new(1,1,1)
+            close2.Text = "X"
+            close2.Font = Enum.Font.SourceSans
+            close2.TextSize = 12
+            close2.MouseButton1Click:Connect(function()
+                sg2:Destroy()
+            end)
+        end
+    end)
+end
+
+-- Player Join/Leave Notifications
+game.Players.PlayerAdded:Connect(function(player)
+    game:GetService('Chat'):Chat(game.Workspace, player.Name .. " has joined! AccountAge = " .. player.AccountAge .. " | UserID = " .. player.UserId, Enum.ChatColor.Green)
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    game:GetService('Chat'):Chat(game.Workspace, player.Name .. " has left! AccountAge = " .. player.AccountAge .. " | UserID = " .. player.UserId, Enum.ChatColor.Red)
+end)
+
+local function handleAdminCommands(player, msg)
+    if not isAdmin(player) then return end
+
+    msg = msg:lower()
+
+    -- Commands List
+    if msg == Prefix .. "cmds" then
+        local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+        screenGui.Name = "CommandListGUI"
+
+        local mainFrame = Instance.new("Frame", screenGui)
+        mainFrame.Size = UDim2.new(0, 600, 0, 500)
+        mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
+        mainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+        mainFrame.BorderSizePixel = 0
+
+        local titleBar = Instance.new("Frame", mainFrame)
+        titleBar.Size = UDim2.new(1, 0, 0, 30)
+        titleBar.Position = UDim2.new(0, 0, 0, 0)
+        titleBar.BackgroundColor3 = Color3.new(0.2, 0, 0)
+
+        local titleText = Instance.new("TextLabel", titleBar)
+        titleText.Size = UDim2.new(1, -40, 1, 0)
+        titleText.Position = UDim2.new(0, 10, 0, 0)
+        titleText.Text = "ADMIN COMMANDS LIST"
+        titleText.TextColor3 = Color3.new(1, 1, 1)
+        titleText.Font = Enum.Font.SourceSansBold
+        titleText.TextSize = 18
+        titleText.TextXAlignment = Enum.TextXAlignment.Left
+        titleText.BackgroundTransparency = 1
+
+        local closeBtn = Instance.new("TextButton", titleBar)
+        closeBtn.Size = UDim2.new(0, 30, 0, 30)
+        closeBtn.Position = UDim2.new(1, -30, 0, 0)
+        closeBtn.Text = "X"
+        closeBtn.TextColor3 = Color3.new(1, 1, 1)
+        closeBtn.Font = Enum.Font.SourceSansBold
+        closeBtn.TextSize = 18
+        closeBtn.BackgroundColor3 = Color3.new(0.3, 0, 0)
+        closeBtn.BorderSizePixel = 0
+        closeBtn.MouseButton1Click:Connect(function()
+            screenGui:Destroy()
+        end)
+
+        local scrollFrame = Instance.new("ScrollingFrame", mainFrame)
+        scrollFrame.Size = UDim2.new(1, -10, 1, -40)
+        scrollFrame.Position = UDim2.new(0, 5, 0, 35)
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 3000)
+        scrollFrame.BackgroundTransparency = 1
+        scrollFrame.ScrollBarThickness = 8
+
+        local commands = {
+            -- Basic Commands
+            Prefix .. "cmds - Shows command list",
+            Prefix .. "fl - Fixes lighting and sky",
+            Prefix .. "fc - Fixes camera",
+            Prefix .. "no - Prevents local scripts",
+            Prefix .. "nos - Removes all sounds",
+            Prefix .. "ns - Stops all scripts",
+            Prefix .. "nog <plr> - Removes GUIs",
+            Prefix .. "rj - Rejoins server",
+            Prefix .. "r - Respawns character",
+            Prefix .. "run <script> - Executes script",
+            Prefix .. "rm - Resets map",
+            Prefix .. "rs - Resets server",
+            Prefix .. "ban <plr> - Bans player",
+            Prefix .. "unban <plr> - Unbans player",
+            Prefix .. "kick <plr> - Kicks player",
+            Prefix .. "bans - Shows banned players",
+            Prefix .. "c - Clears workspace",
+            Prefix .. "fixcam - Fixes camera",
+            Prefix .. "restart - Restarts server",
+            Prefix .. "sr - Resets to spawn",
+            Prefix .. "nil - Removes character",
+
+            -- Player Management
+            Prefix .. "kill <plr> - Kills player",
+            Prefix .. "ff <plr> - Force field",
+            Prefix .. "unff <plr> - Remove force field",
+            Prefix .. "explode <plr> - Explodes player",
+            Prefix .. "freeze <plr> - Freezes player",
+            Prefix .. "thaw <plr> - Unfreezes player",
+            Prefix .. "heal <plr> - Heals player",
+            Prefix .. "god <plr> - God mode",
+
+            -- Movement
+            Prefix .. "fly <plr> - Enables flying",
+            Prefix .. "unfly <plr> - Disables flying",
+            Prefix .. "ws <speed> - Walk speed",
+            Prefix .. "noclip <plr> - Noclip",
+            Prefix .. "clip <plr> - Disables noclip",
+            Prefix .. "spin <plr> - Spins player",
+            Prefix .. "unspin <plr> - Stops spin",
+
+            -- Teleportation
+            Prefix .. "tp <plr> - Teleports to player",
+            Prefix .. "bring <plr> - Brings player",
+
+            -- Appearance
+            Prefix .. "invisible <plr> - Makes invisible",
+            Prefix .. "visible <plr> - Makes visible",
+            Prefix .. "size <plr> <num> - Changes size",
+            Prefix .. "dwarf <plr> - Makes small",
+            Prefix .. "giant <plr> - Makes big",
+            Prefix .. "fire <plr> - Fire effect",
+            Prefix .. "unfire <plr> - Removes fire",
+            Prefix .. "sparkles <plr> - Sparkles effect",
+            Prefix .. "unsparkles <plr> - Removes sparkles",
+            Prefix .. "r15 <plr> - R15 rig",
+            Prefix .. "r6 <plr> - R6 rig",
+
+            -- Fun Commands
+            Prefix .. "fling <plr> - Flings player",
+            Prefix .. "jail <plr> - Jails player",
+            Prefix .. "clone <plr> - Clones player",
+            Prefix .. "bruh <plr> - Plays bruh sound",
+            Prefix .. "gear <id> - Gives gear",
+            Prefix .. "btools <plr> - Gives building tools",
+
+            -- Music
+            Prefix .. "music <song> - Plays music",
+            Prefix .. "pitch <num> - Sound pitch",
+            Prefix .. "volume <num> - Sound volume",
+            Prefix .. "muslist - Music list",
+
+            -- Console
+            Prefix .. "console show - Shows console",
+            Prefix .. "console hide - Hides console",
+            Prefix .. "exe <script> - Executes code",
+            Prefix .. "pri <plr> - Gives admin privileges"
+        }
+
+        for i, cmd in ipairs(commands) do
+            local cmdLabel = Instance.new("TextLabel", scrollFrame)
+            cmdLabel.Size = UDim2.new(1, -10, 0, 20)
+            cmdLabel.Position = UDim2.new(0, 5, 0, (i-1)*20)
+            cmdLabel.Text = cmd
+            cmdLabel.TextColor3 = Color3.new(1, 0.5, 0.5)
+            cmdLabel.Font = Enum.Font.SourceSans
+            cmdLabel.TextSize = 12
+            cmdLabel.TextXAlignment = Enum.TextXAlignment.Left
+            cmdLabel.BackgroundTransparency = 1
+        end
+
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, #commands * 20)
+    end
+
+    -- Console
+    if msg == Prefix .. "console show" then
+        local sg = Instance.new('ScreenGui', player.PlayerGui)
+        local fm = Instance.new('Frame', sg)
+        fm.Selectable = true
+        fm.Size = UDim2.new(0,400,0,300)
+        fm.BackgroundColor3 = Color3.new(0,0,0)
+        fm.BorderSizePixel = 4
+        fm.BorderColor3 = Color3.new(1,1,1)
+        fm.Position = UDim2.new(0.395,0,0.3,0)
+
+        local txt = Instance.new('TextLabel', fm)
+        txt.Size = UDim2.new(0,400,0,25)
+        txt.Text = "~Game Console~"
+        txt.Font = Enum.Font.SourceSans
+        txt.TextSize = 18
+        txt.TextColor3 = Color3.new(1,1,1)
+        txt.BackgroundColor3 = Color3.new(0,0,0)
+        txt.BorderSizePixel = 4
+        txt.BorderColor3 = Color3.new(1,1,1)
+
+        local box = Instance.new('TextBox', fm)
+        box.Position = UDim2.new(0,50,0,50)
+        box.Size = UDim2.new(0,300,0,200)
+        box.BackgroundColor3 = Color3.new(0,0,0)
+        box.BorderSizePixel = 4
+        box.BorderColor3 = Color3.new(1,1,1)
+        box.TextColor3 = Color3.new(1,1,1)
+        box.ClearTextOnFocus = false
+        box.MultiLine = true
+        box.TextXAlignment = Enum.TextXAlignment.Left
+        box.TextWrapped = true
+        box.TextYAlignment = Enum.TextYAlignment.Top
+        box.Text = 'Type your script here...'
+        box.Font = Enum.Font.SourceSans
+        box.TextSize = 14
+
+        local load1 = Instance.new('TextButton', box)
+        load1.Size = UDim2.new(0,200,0,25)
+        load1.Position = UDim2.new(0,50,0,170)
+        load1.BackgroundColor3 = Color3.new(0, 0.67, 0)
+        load1.TextColor3 = Color3.new(0,0,0)
+        load1.BorderSizePixel = 4
+        load1.BorderColor3 = Color3.new(1,1,1)
+        load1.Text = "Execute!"
+        load1.Font = Enum.Font.SourceSans
+        load1.TextSize = 14
+        load1.MouseButton1Click:Connect(function()
+            pcall(function()
+                loadstring(box.Text)()
+            end)
+        end)
+
+        local clr = Instance.new('TextButton', box)
+        clr.Size = UDim2.new(0,50,0,25)
+        clr.Position = UDim2.new(0,250,0,170)
+        clr.BackgroundColor3 = Color3.new(0.67,0,0)
+        clr.TextColor3 = Color3.new(0,0,0)
+        clr.BorderSizePixel = 4
+        clr.BorderColor3 = Color3.new(1,1,1)
+        clr.Text = "Clear!"
+        clr.Font = Enum.Font.SourceSans
+        clr.TextSize = 14
+        clr.MouseButton1Click:Connect(function()
+            box.Text = ''
+            box:CaptureFocus()
+        end)
+
+        player:SetAttribute("AdminConsole", fm)
+    end
+
+    if msg == Prefix .. "console hide" then
+        local console = player:GetAttribute("AdminConsole")
+        if console then
+            console:Destroy()
+            player:SetAttribute("AdminConsole", nil)
+        end
+    end
+
+    -- Basic Commands
+    if msg:sub(1, #(Prefix .. "kill")) == Prefix .. "kill" then
+        local targetName = msg:sub(#(Prefix .. "kill") + 2):lower()
+
+        if targetName == "me" then
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.Health = 0
+            end
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v.Character and v.Character:FindFirstChild("Humanoid") then
+                    v.Character.Humanoid.Health = 0
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target and target.Character and target.Character:FindFirstChild("Humanoid") then
+                target.Character.Humanoid.Health = 0
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "kick")) == Prefix .. "kick" then
+        local targetName = msg:sub(#(Prefix .. "kick") + 2):lower()
+
+        if targetName == "me" then
+            player:Kick("Kicked by admin command")
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v ~= player then
+                    v:Kick("Kicked by admin command")
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                target:Kick("Kicked by admin command")
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "ban")) == Prefix .. "ban" then
+        local targetName = msg:sub(#(Prefix .. "ban") + 2):lower()
+
+        if targetName == "me" then
+            table.insert(Banned, player.Name)
+            local banValue = Instance.new("StringValue", folder)
+            banValue.Name = player.Name
+            banValue.Value = player.Name
+            player:Kick("Banned by admin command")
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v ~= player then
+                    table.insert(Banned, v.Name)
+                    local banValue = Instance.new("StringValue", folder)
+                    banValue.Name = v.Name
+                    banValue.Value = v.Name
+                    v:Kick("Banned by admin command")
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                table.insert(Banned, target.Name)
+                local banValue = Instance.new("StringValue", folder)
+                banValue.Name = target.Name
+                banValue.Value = target.Name
+                target:Kick("Banned by admin command")
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "explode")) == Prefix .. "explode" then
+        local targetName = msg:sub(#(Prefix .. "explode") + 2):lower()
+
+        if targetName == "me" then
+            if player.Character then
+                local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    local ex = Instance.new("Explosion", game.Workspace)
+                    ex.Position = torso.Position
+                end
+            end
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v.Character then
+                    local torso = v.Character:FindFirstChild("Torso") or v.Character:FindFirstChild("UpperTorso")
+                    if torso then
+                        local ex = Instance.new("Explosion", game.Workspace)
+                        ex.Position = torso.Position
+                    end
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target and target.Character then
+                local torso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    local ex = Instance.new("Explosion", game.Workspace)
+                    ex.Position = torso.Position
+                end
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "exe")) == Prefix .. "exe" then
+        local scriptCode = msg:sub(#(Prefix .. "exe") + 2)
+        pcall(function()
+            loadstring(scriptCode)()
+        end)
+    end
+
+    if msg:sub(1, #(Prefix .. "ff")) == Prefix .. "ff" then
+        local targetName = msg:sub(#(Prefix .. "ff") + 2):lower()
+
+        if targetName == "me" then
+            if player.Character then
+                Instance.new("ForceField", player.Character)
+            end
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v.Character then
+                    Instance.new("ForceField", v.Character)
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target and target.Character then
+                Instance.new("ForceField", target.Character)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unff")) == Prefix .. "unff" then
+        local targetName = msg:sub(#(Prefix .. "unff") + 2):lower()
+
+        if targetName == "me" then
+            if player.Character then
+                for _, child in pairs(player.Character:GetChildren()) do
+                    if child:IsA("ForceField") then
+                        child:Destroy()
+                    end
+                end
+            end
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v.Character then
+                    for _, child in pairs(v.Character:GetChildren()) do
+                        if child:IsA("ForceField") then
+                            child:Destroy()
+                        end
+                    end
+                end
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target and target.Character then
+                for _, child in pairs(target.Character:GetChildren()) do
+                    if child:IsA("ForceField") then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "ws")) == Prefix .. "ws" then
+        local speed = tonumber(msg:sub(#(Prefix .. "ws") + 2))
+        if speed and player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = speed
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "gear")) == Prefix .. "gear" then
+        local gearId = tonumber(msg:sub(#(Prefix .. "gear") + 2))
+        if gearId then
+            pcall(function()
+                local asset = game:GetService("InsertService"):LoadAsset(gearId)
+                if asset and asset:FindFirstChildOfClass("Tool") then
+                    asset:FindFirstChildOfClass("Tool").Parent = player.Backpack
+                end
+            end)
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "tp")) == Prefix .. "tp" then
+        local targetName = msg:sub(#(Prefix .. "tp") + 2):lower()
+
+        local target = getPlayerByName(targetName)
+        if target and target.Character and player.Character then
+            local playerTorso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso")
+            local targetTorso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+
+            if playerTorso and targetTorso then
+                playerTorso.CFrame = targetTorso.CFrame
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "music")) == Prefix .. "music" then
+        local songParam = msg:sub(#(Prefix .. "music") + 2):lower()
+
+        local oldSound = workspace.Terrain:FindFirstChild("BadLukeeSoundsz")
+        if oldSound then
+            oldSound:Destroy()
+        end
+
+        local sound = Instance.new('Sound', workspace.Terrain)
+        sound.Volume = 10
+        sound.Name = 'BadLukeeSoundsz'
+        sound.Pitch = 1
+        sound.Looped = true
+
+        local soundId = "rbxassetid://" .. songParam
+
+        if songParam == "watcha" then
+            soundId = "rbxassetid://177681012"
+        elseif songParam == "lean" then
+            soundId = "rbxassetid://328474897"
+        elseif songParam == "baby" then
+            soundId = "rbxassetid://130841252"
+        elseif songParam == "moonman" then
+            soundId = "rbxassetid://340924386"
+        elseif songParam == "hello" then
+            soundId = "rbxassetid://313694441"
+        elseif songParam == "waves" then
+            soundId = "rbxassetid://253545802"
+        elseif songParam == "cake" then
+            soundId = "rbxassetid://313144336"
+        end
+
+        sound.SoundId = soundId
+        sound:Play()
+
+        player:SetAttribute("CurrentMusic", sound)
+    end
+
+    if msg:sub(1, #(Prefix .. "pitch")) == Prefix .. "pitch" then
+        local pitch = tonumber(msg:sub(#(Prefix .. "pitch") + 2))
+        local sound = player:GetAttribute("CurrentMusic")
+        if pitch and sound then
+            sound.Pitch = pitch
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "volume")) == Prefix .. "volume" then
+        local volume = tonumber(msg:sub(#(Prefix .. "volume") + 2))
+        local sound = player:GetAttribute("CurrentMusic")
+        if volume and sound then
+            sound.Volume = volume
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "btools")) == Prefix .. "btools" then
+        local targetName = msg:sub(#(Prefix .. "btools") + 2):lower()
+
+        local function giveBTools(targetPlayer)
+            if targetPlayer and targetPlayer:FindFirstChild("Backpack") then
+                local tools = {
+                    {Name = "Move", BinType = Enum.BinType.GameTool},
+                    {Name = "Clone", BinType = Enum.BinType.Clone},
+                    {Name = "Delete", BinType = Enum.BinType.Hammer}
+                }
+
+                for _, toolInfo in pairs(tools) do
+                    local tool = Instance.new("HopperBin", targetPlayer.Backpack)
+                    tool.Name = toolInfo.Name
+                    tool.BinType = toolInfo.BinType
+                end
+            end
+        end
+
+        if targetName == "me" then
+            giveBTools(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                giveBTools(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                giveBTools(target)
+            end
+        end
+    end
+
+    -- Game Control Commands
+    if msg == Prefix .. "fl" then
+        game.Lighting.GlobalShadows = true
+        game.Lighting.Brightness = 1
+        game.Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+        
+        local sky = game.Lighting:FindFirstChildOfClass("Sky")
+        if sky then
+            sky:Destroy()
+        end
+    end
+
+    if msg == Prefix .. "fc" then
+        if player.Character then
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+            workspace.CurrentCamera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+        end
+    end
+
+    if msg == Prefix .. "no" then
+        for _, script in pairs(game:GetDescendants()) do
+            if script:IsA("LocalScript") and script:FindFirstAncestorOfClass("Player") == player then
+                script.Disabled = true
+            end
+        end
+    end
+
+    if msg == Prefix .. "nos" then
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then
+                sound:Destroy()
+            end
+        end
+    end
+
+    if msg == Prefix .. "ns" then
+        for _, script in pairs(game:GetDescendants()) do
+            if script:IsA("Script") and not script:IsA("CoreScript") then
+                script.Disabled = true
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "nog")) == Prefix .. "nog" then
+        local targetName = msg:sub(#(Prefix .. "nog") + 2):lower()
+        
+        local function removeGUIs(targetPlayer)
+            if targetPlayer:FindFirstChild("PlayerGui") then
+                for _, gui in pairs(targetPlayer.PlayerGui:GetChildren()) do
+                    if gui:IsA("ScreenGui") then
+                        gui:Destroy()
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            removeGUIs(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                removeGUIs(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                removeGUIs(target)
+            end
+        end
+    end
+
+    if msg == Prefix .. "rj" then
+        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
+    end
+
+    if msg == Prefix .. "r" then
+        if player.Character then
+            player.Character:BreakJoints()
+        end
+    end
+
+    if msg == Prefix .. "rm" then
+        for _, obj in pairs(workspace:GetChildren()) do
+            if obj.Name ~= "Terrain" then
+                obj:Destroy()
+            end
+        end
+        
+        local baseplate = Instance.new("Part")
+        baseplate.Name = "Baseplate"
+        baseplate.Size = Vector3.new(512, 1, 512)
+        baseplate.Position = Vector3.new(0, 0, 0)
+        baseplate.Anchored = true
+        baseplate.BrickColor = BrickColor.new("Earth green")
+        baseplate.Parent = workspace
+        
+        local spawn = Instance.new("SpawnLocation")
+        spawn.Name = "SpawnLocation"
+        spawn.Size = Vector3.new(6, 1, 6)
+        spawn.Position = Vector3.new(0, 1, 0)
+        spawn.Anchored = true
+        spawn.Parent = workspace
+    end
+
+    if msg == Prefix .. "c" then
+        for _, obj in pairs(workspace:GetChildren()) do
+            if obj.Name ~= "Terrain" and obj.Name ~= "Base" then
+                obj:Destroy()
+            end
+        end
+    end
+
+    if msg == Prefix .. "fixcam" then
+        if player.Character then
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+            workspace.CurrentCamera.CameraSubject = player.Character:FindFirstChild("Humanoid")
+        end
+    end
+
+    if msg == Prefix .. "sr" then
+        if player.Character then
+            player.Character:BreakJoints()
+        end
+    end
+
+    if msg == Prefix .. "nil" then
+        if player.Character then
+            player.Character:Destroy()
+        end
+    end
+
+    -- Character Control Commands
+    if msg:sub(1, #(Prefix .. "fly")) == Prefix .. "fly" then
+        local targetName = msg:sub(#(Prefix .. "fly") + 2):lower()
+        
+        local function enableFly(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                local humanoid = targetPlayer.Character.Humanoid
+                humanoid.PlatformStand = true
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
+                bodyVelocity.Parent = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+            end
+        end
+        
+        if targetName == "me" then
+            enableFly(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                enableFly(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                enableFly(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unfly")) == Prefix .. "unfly" then
+        local targetName = msg:sub(#(Prefix .. "unfly") + 2):lower()
+        
+        local function disableFly(targetPlayer)
+            if targetPlayer.Character then
+                local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.PlatformStand = false
+                end
+                local torso = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    for _, v in pairs(torso:GetChildren()) do
+                        if v:IsA("BodyVelocity") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            disableFly(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                disableFly(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                disableFly(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "freeze")) == Prefix .. "freeze" then
+        local targetName = msg:sub(#(Prefix .. "freeze") + 2):lower()
+        
+        local function freezePlayer(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = true
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            freezePlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                freezePlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                freezePlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "thaw")) == Prefix .. "thaw" then
+        local targetName = msg:sub(#(Prefix .. "thaw") + 2):lower()
+        
+        local function thawPlayer(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = false
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            thawPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                thawPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                thawPlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "jump")) == Prefix .. "jump" then
+        local targetName = msg:sub(#(Prefix .. "jump") + 2):lower()
+        
+        local function makeJump(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.Jump = true
+            end
+        end
+        
+        if targetName == "me" then
+            makeJump(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeJump(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeJump(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "sit")) == Prefix .. "sit" then
+        local targetName = msg:sub(#(Prefix .. "sit") + 2):lower()
+        
+        local function makeSit(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.Sit = true
+            end
+        end
+        
+        if targetName == "me" then
+            makeSit(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeSit(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeSit(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "spin")) == Prefix .. "spin" then
+        local targetName = msg:sub(#(Prefix .. "spin") + 2):lower()
+        
+        local function spinPlayer(targetPlayer)
+            if targetPlayer.Character then
+                local torso = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+                    bodyAngularVelocity.AngularVelocity = Vector3.new(0, 20, 0)
+                    bodyAngularVelocity.MaxTorque = Vector3.new(0, 400000, 0)
+                    bodyAngularVelocity.Parent = torso
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            spinPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                spinPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                spinPlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unspin")) == Prefix .. "unspin" then
+        local targetName = msg:sub(#(Prefix .. "unspin") + 2):lower()
+        
+        local function unspinPlayer(targetPlayer)
+            if targetPlayer.Character then
+                local torso = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    for _, v in pairs(torso:GetChildren()) do
+                        if v:IsA("BodyAngularVelocity") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            unspinPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                unspinPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                unspinPlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "size")) == Prefix .. "size" then
+        local params = msg:sub(#(Prefix .. "size") + 2):lower()
+        local targetName, sizeValue = params:match("^(%S+)%s+(%d+)$")
+        
+        if targetName and sizeValue then
+            sizeValue = tonumber(sizeValue)
+            local function resizePlayer(targetPlayer)
+                if targetPlayer.Character then
+                    for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.Size = Vector3.new(sizeValue, sizeValue, sizeValue)
+                        end
+                    end
+                end
+            end
+            
+            if targetName == "me" then
+                resizePlayer(player)
+            elseif targetName == "all" then
+                for _, v in pairs(Players:GetPlayers()) do
+                    resizePlayer(v)
+                end
+            else
+                local target = getPlayerByName(targetName)
+                if target then
+                    resizePlayer(target)
+                end
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "invisible")) == Prefix .. "invisible" then
+        local targetName = msg:sub(#(Prefix .. "invisible") + 2):lower()
+        
+        local function makeInvisible(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 1
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            makeInvisible(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeInvisible(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeInvisible(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "visible")) == Prefix .. "visible" then
+        local targetName = msg:sub(#(Prefix .. "visible") + 2):lower()
+        
+        local function makeVisible(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 0
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            makeVisible(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeVisible(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeVisible(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "fire")) == Prefix .. "fire" then
+        local targetName = msg:sub(#(Prefix .. "fire") + 2):lower()
+        
+        local function setOnFire(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local fire = Instance.new("Fire")
+                    fire.Size = 10
+                    fire.Parent = humanoidRootPart
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            setOnFire(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                setOnFire(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                setOnFire(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unfire")) == Prefix .. "unfire" then
+        local targetName = msg:sub(#(Prefix .. "unfire") + 2):lower()
+        
+        local function removeFire(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    for _, v in pairs(humanoidRootPart:GetChildren()) do
+                        if v:IsA("Fire") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            removeFire(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                removeFire(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                removeFire(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "sparkles")) == Prefix .. "sparkles" then
+        local targetName = msg:sub(#(Prefix .. "sparkles") + 2):lower()
+        
+        local function addSparkles(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local sparkles = Instance.new("Sparkles")
+                    sparkles.SparkleColor = Color3.new(1, 1, 1)
+                    sparkles.Parent = humanoidRootPart
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            addSparkles(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                addSparkles(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                addSparkles(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unsparkles")) == Prefix .. "unsparkles" then
+        local targetName = msg:sub(#(Prefix .. "unsparkles") + 2):lower()
+        
+        local function removeSparkles(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    for _, v in pairs(humanoidRootPart:GetChildren()) do
+                        if v:IsA("Sparkles") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            removeSparkles(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                removeSparkles(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                removeSparkles(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "smoke")) == Prefix .. "smoke" then
+        local targetName = msg:sub(#(Prefix .. "smoke") + 2):lower()
+        
+        local function addSmoke(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local smoke = Instance.new("Smoke")
+                    smoke.Size = 5
+                    smoke.Parent = humanoidRootPart
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            addSmoke(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                addSmoke(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                addSmoke(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "unsmoke")) == Prefix .. "unsmoke" then
+        local targetName = msg:sub(#(Prefix .. "unsmoke") + 2):lower()
+        
+        local function removeSmoke(targetPlayer)
+            if targetPlayer.Character then
+                local humanoidRootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    for _, v in pairs(humanoidRootPart:GetChildren()) do
+                        if v:IsA("Smoke") then
+                            v:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            removeSmoke(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                removeSmoke(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                removeSmoke(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "r15")) == Prefix .. "r15" then
+        local targetName = msg:sub(#(Prefix .. "r15") + 2):lower()
+        
+        local function setR15(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.RigType = Enum.HumanoidRigType.R15
+            end
+        end
+        
+        if targetName == "me" then
+            setR15(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                setR15(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                setR15(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "r6")) == Prefix .. "r6" then
+        local targetName = msg:sub(#(Prefix .. "r6") + 2):lower()
+        
+        local function setR6(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.RigType = Enum.HumanoidRigType.R6
+            end
+        end
+        
+        if targetName == "me" then
+            setR6(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                setR6(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                setR6(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "dwarf")) == Prefix .. "dwarf" then
+        local targetName = msg:sub(#(Prefix .. "dwarf") + 2):lower()
+        
+        local function makeDwarf(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Size = part.Size * 0.5
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            makeDwarf(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeDwarf(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeDwarf(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "giant")) == Prefix .. "giant" then
+        local targetName = msg:sub(#(Prefix .. "giant") + 2):lower()
+        
+        local function makeGiant(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Size = part.Size * 2
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            makeGiant(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeGiant(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeGiant(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "noclip")) == Prefix .. "noclip" then
+        local targetName = msg:sub(#(Prefix .. "noclip") + 2):lower()
+        
+        local function enableNoclip(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            enableNoclip(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                enableNoclip(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                enableNoclip(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "clip")) == Prefix .. "clip" then
+        local targetName = msg:sub(#(Prefix .. "clip") + 2):lower()
+        
+        local function disableNoclip(targetPlayer)
+            if targetPlayer.Character then
+                for _, part in pairs(targetPlayer.Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            disableNoclip(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                disableNoclip(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                disableNoclip(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "heal")) == Prefix .. "heal" then
+        local targetName = msg:sub(#(Prefix .. "heal") + 2):lower()
+        
+        local function healPlayer(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.Health = targetPlayer.Character.Humanoid.MaxHealth
+            end
+        end
+        
+        if targetName == "me" then
+            healPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                healPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                healPlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "god")) == Prefix .. "god" then
+        local targetName = msg:sub(#(Prefix .. "god") + 2):lower()
+        
+        local function makeGod(targetPlayer)
+            if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                targetPlayer.Character.Humanoid.MaxHealth = math.huge
+                targetPlayer.Character.Humanoid.Health = math.huge
+            end
+        end
+        
+        if targetName == "me" then
+            makeGod(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                makeGod(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                makeGod(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "bring")) == Prefix .. "bring" then
+        local targetName = msg:sub(#(Prefix .. "bring") + 2):lower()
+        
+        local target = getPlayerByName(targetName)
+        if target and target.Character and player.Character then
+            local targetTorso = target.Character:FindFirstChild("Torso") or target.Character:FindFirstChild("UpperTorso")
+            local playerTorso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso")
+            
+            if targetTorso and playerTorso then
+                targetTorso.CFrame = playerTorso.CFrame + playerTorso.CFrame.LookVector * 5
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "fling")) == Prefix .. "fling" then
+        local targetName = msg:sub(#(Prefix .. "fling") + 2):lower()
+        
+        local function flingPlayer(targetPlayer)
+            if targetPlayer.Character then
+                local torso = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    local bodyVelocity = Instance.new("BodyVelocity")
+                    bodyVelocity.Velocity = Vector3.new(math.random(-100,100), math.random(50,100), math.random(-100,100))
+                    bodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
+                    bodyVelocity.Parent = torso
+                    game:GetService("Debris"):AddItem(bodyVelocity, 1)
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            flingPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                flingPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                flingPlayer(target)
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "clone")) == Prefix .. "clone" then
+        local targetName = msg:sub(#(Prefix .. "clone") + 2):lower()
+        
+        local target = getPlayerByName(targetName)
+        if target and target.Character then
+            local clone = target.Character:Clone()
+            clone.Parent = workspace
+            local torso = clone:FindFirstChild("Torso") or clone:FindFirstChild("UpperTorso")
+            if torso then
+                torso.CFrame = CFrame.new(math.random(-50,50), math.random(10,50), math.random(-50,50))
+            end
+        end
+    end
+
+    if msg:sub(1, #(Prefix .. "jail")) == Prefix .. "jail" then
+        local targetName = msg:sub(#(Prefix .. "jail") + 2):lower()
+        
+        local function jailPlayer(targetPlayer)
+            if targetPlayer.Character then
+                local torso = targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+                if torso then
+                    -- Create jail
+                    local jail = Instance.new("Model")
+                    jail.Name = "Jail"
+                    
+                    local parts = {
+                        {Size = Vector3.new(10, 1, 10), Position = Vector3.new(0, -0.5, 0)},
+                        {Size = Vector3.new(10, 10, 1), Position = Vector3.new(0, 5, 5)},
+                        {Size = Vector3.new(10, 10, 1), Position = Vector3.new(0, 5, -5)},
+                        {Size = Vector3.new(1, 10, 10), Position = Vector3.new(5, 5, 0)},
+                        {Size = Vector3.new(1, 10, 10), Position = Vector3.new(-5, 5, 0)}
+                    }
+                    
+                    for _, partInfo in pairs(parts) do
+                        local part = Instance.new("Part")
+                        part.Size = partInfo.Size
+                        part.Position = torso.Position + partInfo.Position
+                        part.Anchored = true
+                        part.BrickColor = BrickColor.new("Medium stone grey")
+                        part.Parent = jail
+                    end
+                    
+                    jail.Parent = workspace
+                    
+                    -- Teleport player to jail
+                    torso.CFrame = CFrame.new(torso.Position.X, torso.Position.Y + 3, torso.Position.Z)
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            jailPlayer(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                jailPlayer(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                jailPlayer(target)
+            end
+        end
+    end
+
+    -- Bruh sound command
+    if msg:sub(1, #(Prefix .. "bruh")) == Prefix .. "bruh" then
+        local targetName = msg:sub(#(Prefix .. "bruh") + 2):lower()
+        
+        local function playBruhSound(targetPlayer)
+            if targetPlayer.Character then
+                local head = targetPlayer.Character:FindFirstChild("Head")
+                if head then
+                    local sound = Instance.new("Sound")
+                    sound.SoundId = "rbxassetid://4759873541"
+                    sound.Volume = 1
+                    sound.Parent = head
+                    sound:Play()
+                    game:GetService("Debris"):AddItem(sound, 3)
+                end
+            end
+        end
+        
+        if targetName == "me" then
+            playBruhSound(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                playBruhSound(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                playBruhSound(target)
+            end
+        end
+    end
+
+    -- Give admin privileges
+    if msg:sub(1, #(Prefix .. "pri")) == Prefix .. "pri" then
+        local targetName = msg:sub(#(Prefix .. "pri") + 2):lower()
+        
+        local function giveAdmin(targetPlayer)
+            if not isAdmin(targetPlayer) then
+                table.insert(Admin, targetPlayer.Name)
+                targetPlayer.Chatted:Connect(function(msg)
+                    handleAdminCommands(targetPlayer, msg)
+                end)
+            end
+        end
+        
+        if targetName == "me" then
+            giveAdmin(player)
+        elseif targetName == "all" then
+            for _, v in pairs(Players:GetPlayers()) do
+                giveAdmin(v)
+            end
+        else
+            local target = getPlayerByName(targetName)
+            if target then
+                giveAdmin(target)
+            end
+        end
+    end
+end
+
+-- Setup admin for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if isAdmin(player) then
+        player.Chatted:Connect(function(msg)
+            handleAdminCommands(player, msg)
+        end)
+    end
+    setupAdmin(player)
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if isAdmin(player) then
+        player.Chatted:Connect(function(msg)
+            handleAdminCommands(player, msg)
+        end)
+    end
+    setupAdmin(player)
+end)
+
+-- Orbit System
+local function setupOrbit(player)
+    if not isAdmin(player) then return end
+
+    local orbModel = Instance.new('Model', workspace)
+    orbModel.Name = player.Name .. "_Orbit"
+
+    local humanoid = Instance.new('Humanoid', orbModel)
+    humanoid.MaxHealth = 0
+
+    local orbPart = Instance.new("Part", orbModel)
+    orbPart.BrickColor = BrickColor.new("Really black")
+    orbPart.Size = Vector3.new(1,1,1)
+    orbPart.Shape = Enum.PartType.Ball
+    orbPart.Material = Enum.Material.Neon
+    orbPart.Anchored = true
+    orbPart.Name = "BsOrb"
+    orbPart.Locked = true
+    orbPart.CanCollide = false
+
+    if player.Character then
+        game:GetService('Chat'):Chat(orbPart, "Welcome to i0rb " .. player.Name .. "! i0rb remade by scrubl0rd. The current prefix is " .. Prefix .. "! Say " .. Prefix .. "cmds to show a list of commands!", Enum.ChatColor.Red)
+    end
+
+    local connection
+    connection = game:GetService('RunService').Stepped:Connect(function()
+        if not player or not player.Character or not orbPart or orbPart.Parent == nil then
+            connection:Disconnect()
+            return
+        end
+
+        local character = player.Character
+        local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+
+        if torso then
+            local time = tick()
+            orbPart.CFrame = torso.CFrame * CFrame.Angles(math.sin(time), math.abs(time), math.sin(time)) * CFrame.new(0, 0, -Distance)
+
+            local trailPart = Instance.new("Part", orbPart)
+            trailPart.CFrame = orbPart.CFrame
+            trailPart.Size = Vector3.new(0.3, 0.3, 0.3)
+            trailPart.BrickColor = BrickColor.new("Really black")
+            trailPart.Transparency = 0.3
+            trailPart.CanCollide = false
+            trailPart.Anchored = true
+            trailPart.Material = Enum.Material.Neon
+            game:GetService("Debris"):AddItem(trailPart, 1)
+        end
+    end)
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+    if isAdmin(player) then
+        setupOrbit(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if isAdmin(player) then
+        wait(1)
+        setupOrbit(player)
+    end
+end
+
+-- Ban System
+game:GetService('RunService').Stepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        for _, bannedName in ipairs(Banned) do
+            if player.Name == bannedName then
+                player:Kick("You are banned")
+            end
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    for _, bannedName in ipairs(Banned) do
+        if player.Name == bannedName then
+            player:Kick("You are banned")
+        end
+    end
+end)
+
+print("Admin System by Scrubl0rd loaded successfully!")
+print("Prefix: " .. Prefix)
+print("Admins: " .. table.concat(Admin, ", "))
