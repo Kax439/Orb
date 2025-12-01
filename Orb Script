@@ -1,5 +1,3 @@
-wait()
-
 script.Parent = Instance.new('Glue')
 
 Version = 400
