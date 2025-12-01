@@ -79,7 +79,7 @@ end
 -- ... Say :: Before The Command ... -- 
 --<------------------------------------------------------------------------>-- 
 function onChatted(msg) 
-if (string.sub(msg, 1, 2) == "::") then 
+if (string.sub(msg, 1, 2) == "!") then 
 if (string.find(msg, string.lower("reset"))) then 
 for word in msg:gmatch("%w+") do 
 local player = matchPlayer(word) 
