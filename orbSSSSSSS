@@ -1,4 +1,4 @@
-local Admin = {"timnatood7012"}
+local Admin = {"viviwave_2"}
 local Speed = 0.05
 local Distance = 5
 local Prefix = "!"
